@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'cart_item.dart';
 import 'cart_store.dart';
+import 'customer_profile.dart';
 import 'payment_screen.dart';
 
 const _background = Color(0xFF0A0A0A);
@@ -561,6 +562,23 @@ class _CartScreenState extends State<CartScreen> {
   void _removeItem(int index) => CartStore.instance.remove(index);
 
   void _continueToPayment() {
+    const minimumCompanyOrder = 2500.0;
+    if (CustomerProfile.instance.isCompany && _subtotal < minimumCompanyOrder) {
+      final remaining = minimumCompanyOrder - _subtotal;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'Pedido mínimo para pessoa jurídica: R\$ 2.500,00. '
+              'Adicione mais ${formatBrl(remaining)} para continuar.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PaymentScreen(items: CartStore.instance.items),

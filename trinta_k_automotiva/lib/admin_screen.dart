@@ -452,7 +452,7 @@ class _ProductEditor extends StatefulWidget {
 class _ProductEditorState extends State<_ProductEditor> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  late final TextEditingController _category;
+  String? _selectedCategory;
   late final TextEditingController _sku;
   late final TextEditingController _price;
   late final TextEditingController _comparePrice;
@@ -467,7 +467,14 @@ class _ProductEditorState extends State<_ProductEditor> {
     super.initState();
     final product = widget.product;
     _name = TextEditingController(text: product?.name ?? '');
-    _category = TextEditingController(text: product?.category ?? '');
+    final currentCategory = product?.category;
+    _selectedCategory = ProductStore.selectableCategories.contains(
+      currentCategory,
+    )
+        ? currentCategory
+        : (currentCategory == null || currentCategory.isEmpty
+              ? ProductStore.selectableCategories.first
+              : currentCategory);
     _sku = TextEditingController(text: product?.sku ?? '');
     _price = TextEditingController(
       text: product?.price.toStringAsFixed(2) ?? '',
@@ -485,7 +492,6 @@ class _ProductEditorState extends State<_ProductEditor> {
   @override
   void dispose() {
     _name.dispose();
-    _category.dispose();
     _sku.dispose();
     _price.dispose();
     _comparePrice.dispose();
@@ -556,7 +562,7 @@ class _ProductEditorState extends State<_ProductEditor> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Expanded(child: _field(_category, 'Categoria', required: true)),
+                Expanded(child: _categoryDropdown()),
                 const SizedBox(width: 9),
                 Expanded(child: _field(_sku, 'Código / SKU', required: true)),
               ],
@@ -567,7 +573,7 @@ class _ProductEditorState extends State<_ProductEditor> {
                 Expanded(
                   child: _field(
                     _price,
-                    'Preço atual (R\$)',
+                    'Preço no varejo (R\$)',
                     number: true,
                     positive: true,
                     required: true,
@@ -577,9 +583,10 @@ class _ProductEditorState extends State<_ProductEditor> {
                 Expanded(
                   child: _field(
                     _comparePrice,
-                    'Preço anterior (opcional)',
+                    'Preço no atacado (R\$)',
                     number: true,
                     positive: true,
+                    required: true,
                   ),
                 ),
               ],
@@ -692,6 +699,45 @@ class _ProductEditorState extends State<_ProductEditor> {
   double? _parseNumber(String value) =>
       double.tryParse(value.trim().replaceAll(',', '.'));
 
+  Widget _categoryDropdown() {
+    final categories = [
+      ...ProductStore.selectableCategories,
+      if (_selectedCategory != null &&
+          !ProductStore.selectableCategories.contains(_selectedCategory))
+        _selectedCategory!,
+    ];
+    return DropdownButtonFormField<String>(
+      value: _selectedCategory,
+      isExpanded: true,
+      style: const TextStyle(fontSize: 12, color: Colors.white),
+      decoration: InputDecoration(
+        labelText: 'Categoria',
+        labelStyle: const TextStyle(color: _muted, fontSize: 11),
+        filled: true,
+        fillColor: const Color(0xFF111111),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 11, vertical: 12),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(9),
+          borderSide: const BorderSide(color: Color(0xFF343434)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(9),
+          borderSide: const BorderSide(color: _accent),
+        ),
+      ),
+      items: categories
+          .map((category) => DropdownMenuItem(
+                value: category,
+                child: Text(category, overflow: TextOverflow.ellipsis),
+              ))
+          .toList(),
+      onChanged: (category) => setState(() => _selectedCategory = category),
+      validator: (value) => value == null || value.isEmpty
+          ? 'Selecione uma categoria'
+          : null,
+    );
+  }
+
   Future<void> _pickImage() async {
     setState(() => _choosingImage = true);
     try {
@@ -729,7 +775,7 @@ class _ProductEditorState extends State<_ProductEditor> {
       StoreProduct(
         id: original?.id ?? '',
         name: _name.text.trim(),
-        category: _category.text.trim(),
+        category: _selectedCategory!,
         sku: _sku.text.trim(),
         price: price,
         stock: stock < 0 ? 0 : stock,

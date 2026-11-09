@@ -61,6 +61,23 @@ class ProductStore extends ChangeNotifier {
 
   static final ProductStore instance = ProductStore._();
 
+  /// Categories shown on the home page. "Outros" is intentionally excluded
+  /// because it is a catch-all category and should not have a home filter.
+  static const List<String> homeCategories = [
+    'Shampoos',
+    'Ceras',
+    'Microfibras',
+    'Polimento',
+    'Pretinhos',
+    'Aromatizantes',
+    'Acessórios',
+  ];
+
+  static const List<String> selectableCategories = [
+    ...homeCategories,
+    'Outros',
+  ];
+
   final List<StoreProduct> _products = [
     const StoreProduct(
       id: 'shampoo-neutro',

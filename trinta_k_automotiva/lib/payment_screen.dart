@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'cart_item.dart';
+import 'customer_profile.dart';
 
 const _background = Color(0xFF0A0A0A);
 const _surface = Color(0xFF171717);
@@ -23,9 +24,26 @@ class PaymentScreen extends StatefulWidget {
 class _PaymentScreenState extends State<PaymentScreen> {
   _PaymentMethod _method = _PaymentMethod.pix;
   final _formKey = GlobalKey<FormState>();
+  final _postalCodeController = TextEditingController(text: CustomerProfile.instance.postalCode);
+  final _stateController = TextEditingController(text: CustomerProfile.instance.state);
+  final _cityController = TextEditingController(text: CustomerProfile.instance.city);
+  final _neighborhoodController = TextEditingController(text: CustomerProfile.instance.neighborhood);
+  final _streetController = TextEditingController(text: CustomerProfile.instance.street);
+  final _houseNumberController = TextEditingController(text: CustomerProfile.instance.houseNumber);
 
   double get _subtotal => widget.items.fold(0, (sum, item) => sum + item.total);
   int get _units => widget.items.fold(0, (sum, item) => sum + item.quantity);
+
+  @override
+  void dispose() {
+    _postalCodeController.dispose();
+    _stateController.dispose();
+    _cityController.dispose();
+    _neighborhoodController.dispose();
+    _streetController.dispose();
+    _houseNumberController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -192,10 +210,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
           children: [
             Expanded(
               child: _inputField(
+                controller: _postalCodeController,
                 label: 'CEP',
                 hint: '00000-000',
                 keyboardType: TextInputType.number,
-                validator: (value) => value == null || value.trim().length < 8
+                validator: (value) => value == null || value.replaceAll(RegExp(r'\D'), '').length != 8
                     ? 'Informe um CEP válido'
                     : null,
               ),
@@ -217,6 +236,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ],
         ),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: _inputField(controller: _stateController, label: 'Estado', hint: 'SP', validator: _required)),
+          const SizedBox(width: 9),
+          Expanded(flex: 2, child: _inputField(controller: _cityController, label: 'Cidade', hint: 'Sua cidade', validator: _required)),
+        ]),
+        const SizedBox(height: 10),
+        _inputField(controller: _neighborhoodController, label: 'Bairro', hint: 'Seu bairro', validator: _required),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(flex: 3, child: _inputField(controller: _streetController, label: 'Rua', hint: 'Nome da rua', validator: _required)),
+          const SizedBox(width: 9),
+          Expanded(child: _inputField(controller: _houseNumberController, label: 'Número', hint: 'Nº', keyboardType: TextInputType.number, validator: _required)),
+        ]),
       ],
     ),
   );
@@ -345,11 +378,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
       value == null || value.trim().isEmpty ? 'Campo obrigatório' : null;
 
   Widget _inputField({
+    TextEditingController? controller,
     required String label,
     required String hint,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) => TextFormField(
+    controller: controller,
     keyboardType: keyboardType,
     validator: validator,
     style: const TextStyle(fontSize: 12),
@@ -442,6 +477,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   void _submitOrder() {
     if (!_formKey.currentState!.validate()) return;
+    final profile = CustomerProfile.instance;
+    profile
+      ..postalCode = _postalCodeController.text.trim()
+      ..state = _stateController.text.trim()
+      ..city = _cityController.text.trim()
+      ..neighborhood = _neighborhoodController.text.trim()
+      ..street = _streetController.text.trim()
+      ..houseNumber = _houseNumberController.text.trim();
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
