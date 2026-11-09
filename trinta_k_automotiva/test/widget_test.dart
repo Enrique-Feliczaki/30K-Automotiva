@@ -1,30 +1,43 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:trinta_k_automotiva/main.dart';
+import 'package:trinta_k_automotiva/auth_screen.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('QA-26 abre a tela de autenticação', (tester) async {
+    await tester.pumpWidget(const TrintaKApp());
+    expect(find.byType(AuthScreen), findsOneWidget);
+    expect(find.text('30K AUTOMOTIVA'), findsOneWidget);
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  testWidgets('QA-27 apresenta opções de entrar e cadastrar', (tester) async {
+    await tester.pumpWidget(const TrintaKApp());
+    expect(find.text('Cadastrar'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Entrar'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('QA-28 valida o formulário de login vazio', (tester) async {
+    await tester.pumpWidget(const TrintaKApp());
+    await tester.tap(find.widgetWithText(FilledButton, 'Entrar'));
     await tester.pump();
+    expect(find.text('Informe seu e-mail'), findsOneWidget);
+    expect(find.text('Informe sua senha'), findsOneWidget);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  testWidgets('QA-29 permite abrir o cadastro', (tester) async {
+    await tester.pumpWidget(const TrintaKApp());
+    await tester.tap(find.text('Cadastrar'));
+    await tester.pump();
+    expect(find.text('TIPO DE CADASTRO'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Criar cadastro'), findsOneWidget);
+  });
+
+  testWidgets('QA-30 permite acessar a tela de administrador', (tester) async {
+    await tester.pumpWidget(const TrintaKApp());
+    await tester.ensureVisible(find.text('Entrar como administrador'));
+    await tester.tap(find.text('Entrar como administrador'));
+    await tester.pump();
+    expect(find.text('Entrar admin'), findsOneWidget);
+    expect(find.text('Cadastrar empresa'), findsOneWidget);
   });
 }
