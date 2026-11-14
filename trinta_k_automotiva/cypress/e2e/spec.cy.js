@@ -1,34 +1,19 @@
-
-describe('30K Automotiva - Testes E2E', () => {
+describe('30K Automotiva - Inicializacao', () => {
   beforeEach(() => {
     cy.visit('/')
   })
 
-  it('QA-31 - Deve carregar o aplicativo', () => {
-    cy.get('flt-glass-pane', { timeout: 30000 })
-      .should('exist')
+  it('QA-31 carrega o aplicativo Flutter Web', () => {
+    cy.get('flt-glass-pane', { timeout: 30000 }).should('exist')
   })
 
-  it('QA-32 - Deve permitir ativar a acessibilidade', () => {
-    cy.get('flt-semantics-placeholder', {
-      timeout: 30000
-    }).then(($elemento) => {
-      $elemento[0].click()
-    })
-
-    cy.get('flt-semantics-host')
-      .should('exist')
+  it('QA-32 ativa a acessibilidade', () => {
+    cy.ativarAcessibilidade()
+    cy.get('flt-semantics-host').should('exist')
   })
 
-  it('QA-33 - Deve mostrar elementos da interface', () => {
-    cy.get('flt-semantics-placeholder', {
-      timeout: 30000
-    }).then(($elemento) => {
-      $elemento[0].click()
-    })
-
-    cy.get('flt-semantics-host')
-      .find('flt-semantics')
-      .should('have.length.greaterThan', 0)
+  it('QA-33 mostra o titulo na interface', () => {
+    cy.ativarAcessibilidade()
+    cy.contains('30K AUTOMOTIVA').should('exist')
   })
 })

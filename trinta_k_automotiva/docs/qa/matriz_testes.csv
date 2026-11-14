@@ -1,0 +1,143 @@
+﻿ID;Ferramenta;Arquivo;Caso de teste;Situação
+QA-001;Flutter Test;test/cart_item_test.dart;QA-01 calcula o total do item;A executar
+QA-002;Flutter Test;test/cart_item_test.dart;QA-02 copia o item alterando a quantidade;A executar
+QA-003;Flutter Test;test/cart_item_test.dart;QA-03 mantém a quantidade ao copiar sem alteração;A executar
+QA-004;Flutter Test;test/cart_item_test.dart;QA-04 formata valores em reais;A executar
+QA-005;Flutter Test;test/cart_store_test.dart;QA-05 carrinho vazio tem quantidade e subtotal zero;A executar
+QA-006;Flutter Test;test/cart_store_test.dart;QA-06 adiciona produto ao carrinho;A executar
+QA-007;Flutter Test;test/cart_store_test.dart;QA-07 soma quantidades de produtos com o mesmo nome;A executar
+QA-008;Flutter Test;test/cart_store_test.dart;QA-08 calcula subtotal de vários produtos;A executar
+QA-009;Flutter Test;test/cart_store_test.dart;QA-09 aumenta a quantidade de um produto;A executar
+QA-010;Flutter Test;test/cart_store_test.dart;QA-10 diminui a quantidade de um produto;A executar
+QA-011;Flutter Test;test/cart_store_test.dart;QA-11 remove item quando a quantidade chega a zero;A executar
+QA-012;Flutter Test;test/cart_store_test.dart;QA-12 remove o item pelo índice;A executar
+QA-013;Flutter Test;test/cart_store_test.dart;QA-13 ignora índice inválido sem lançar erro;A executar
+QA-014;Flutter Test;test/cart_store_test.dart;QA-14 avisa os ouvintes quando um produto é adicionado;A executar
+QA-015;Flutter Test;test/product_store_test.dart;QA-15 identifica estoque esgotado;A executar
+QA-016;Flutter Test;test/product_store_test.dart;QA-16 identifica estoque baixo;A executar
+QA-017;Flutter Test;test/product_store_test.dart;QA-17 adiciona produto ao catálogo;A executar
+QA-018;Flutter Test;test/product_store_test.dart;QA-18 atualiza um produto existente;A executar
+QA-019;Flutter Test;test/product_store_test.dart;QA-19 remove produto do catálogo;A executar
+QA-020;Flutter Test;test/product_store_test.dart;QA-20 altera o estoque do produto;A executar
+QA-021;Flutter Test;test/product_store_test.dart;QA-21 não permite estoque negativo no ajuste;A executar
+QA-022;Flutter Test;test/product_store_test.dart;QA-22 calcula total de unidades do catálogo;A executar
+QA-023;Flutter Test;test/product_store_test.dart;QA-23 identifica produto esgotado no contador;A executar
+QA-024;Flutter Test;test/product_store_test.dart;QA-24 não inclui Outros nas categorias da tela inicial;A executar
+QA-025;Flutter Test;test/product_store_test.dart;QA-25 formata preço em reais;A executar
+QA-026;Flutter Test;test/widget_test.dart;QA-26 abre a tela de autenticação;A executar
+QA-027;Flutter Test;test/widget_test.dart;QA-27 apresenta opções de entrar e cadastrar;A executar
+QA-028;Flutter Test;test/widget_test.dart;QA-28 valida o formulário de login vazio;A executar
+QA-029;Flutter Test;test/widget_test.dart;QA-29 permite abrir o cadastro;A executar
+QA-030;Flutter Test;test/widget_test.dart;QA-30 permite acessar a tela de administrador;A executar
+QA-031;Cypress;cypress/e2e/spec.cy.js;QA-31 carrega o aplicativo Flutter Web;A executar
+QA-032;Cypress;cypress/e2e/spec.cy.js;QA-32 ativa a acessibilidade;A executar
+QA-033;Cypress;cypress/e2e/spec.cy.js;QA-33 mostra o titulo na interface;A executar
+QA-034;Cypress;cypress/e2e/autenticacao.cy.js;QA-34 exibe a tela de login;A executar
+QA-035;Cypress;cypress/e2e/autenticacao.cy.js;QA-35 exibe a opcao de cadastro;A executar
+QA-036;Cypress;cypress/e2e/autenticacao.cy.js;QA-36 permite abrir o cadastro;A executar
+QA-037;Cypress;cypress/e2e/autenticacao.cy.js;QA-37 permite voltar do cadastro para o login;A executar
+QA-038;Cypress;cypress/e2e/autenticacao.cy.js;QA-38 impede navegacao ao tentar login vazio;A executar
+QA-039;Cypress;cypress/e2e/autenticacao.cy.js;QA-39 mostra entrada administrativa;A executar
+QA-040;Flutter Test;test/auth_screen_test.dart;QA-40 impede login sem email;A executar
+QA-041;Flutter Test;test/auth_screen_test.dart;QA-41 impede login sem senha;A executar
+QA-042;Cypress;cypress/e2e/validacoes.cy.js;QA-42 exige nome no cadastro vazio;A executar
+QA-043;Cypress;cypress/e2e/validacoes.cy.js;QA-43 exige email valido no cadastro vazio;A executar
+QA-044;Cypress;cypress/e2e/validacoes.cy.js;QA-44 exige CPF valido no cadastro vazio;A executar
+QA-045;Cypress;cypress/e2e/validacoes.cy.js;QA-45 exige senha com no minimo seis caracteres;A executar
+QA-046;Cypress;cypress/e2e/validacoes.cy.js;QA-46 permite abrir a orientacao de recuperacao de senha;A executar
+QA-047;Flutter Test;test/customer_profile_test.dart;QA-47 endereco vazio retorna texto vazio;A executar
+QA-048;Flutter Test;test/customer_profile_test.dart;QA-48 monta endereco completo em linhas;A executar
+QA-049;Flutter Test;test/customer_profile_test.dart;QA-49 endereco sem numero nao insere virgula;A executar
+QA-050;Flutter Test;test/customer_profile_test.dart;QA-50 permite endereco somente com cidade;A executar
+QA-051;Flutter Test;test/customer_profile_test.dart;QA-51 permite endereco somente com estado;A executar
+QA-052;Flutter Test;test/customer_profile_test.dart;QA-52 inclui apenas CEP quando demais campos estao vazios;A executar
+QA-053;Flutter Test;test/customer_profile_test.dart;QA-53 atualiza dados pessoais;A executar
+QA-054;Flutter Test;test/customer_profile_test.dart;QA-54 distingue pessoa fisica e juridica;A executar
+QA-055;Flutter Test;test/product_store_extra_test.dart;QA-55 identifica estoque abaixo do minimo;A executar
+QA-056;Flutter Test;test/product_store_extra_test.dart;QA-56 identifica estoque no limite do minimo;A executar
+QA-057;Flutter Test;test/product_store_extra_test.dart;QA-57 copia produto mantendo campos nao alterados;A executar
+QA-058;Flutter Test;test/product_store_extra_test.dart;QA-58 limpa foto mantendo demais propriedades;A executar
+QA-059;Flutter Test;test/product_store_extra_test.dart;QA-59 catalogo retorna lista nao modificavel;A executar
+QA-060;Flutter Test;test/product_store_extra_test.dart;QA-60 gera identificador para produto sem id;A executar
+QA-061;Flutter Test;test/product_store_extra_test.dart;QA-61 atualizar id inexistente nao altera catalogo;A executar
+QA-062;Flutter Test;test/product_store_extra_test.dart;QA-62 calcular contador de baixo estoque apos ajuste;A executar
+QA-063;Flutter Test;test/product_store_extra_test.dart;QA-63 notifica ouvintes ao editar o estoque;A executar
+QA-064;Flutter Test;test/product_store_extra_test.dart;QA-64 nao altera estoque de identificador inexistente;A executar
+QA-065;Flutter Test;test/product_store_extra_test.dart;QA-65 inclui Outros nas categorias selecionaveis;A executar
+QA-066;Flutter Test;test/cart_store_extra_test.dart;QA-66 ignora alteracao de indice negativo;A executar
+QA-067;Flutter Test;test/cart_store_extra_test.dart;QA-67 ignora alteracao alem do ultimo indice;A executar
+QA-068;Flutter Test;test/cart_store_extra_test.dart;QA-68 ignora remocao de indice invalido;A executar
+QA-069;Flutter Test;test/cart_store_extra_test.dart;QA-69 lista de itens nao pode ser modificada externamente;A executar
+QA-070;Flutter Test;test/cart_store_extra_test.dart;QA-70 atualiza subtotal ao remover um de dois produtos;A executar
+QA-071;Flutter Test;test/cart_store_extra_test.dart;QA-71 soma e reduz itens sem deixar quantidade negativa;A executar
+QA-072;Flutter Test;test/cart_store_extra_test.dart;QA-72 permite produtos distintos no mesmo carrinho;A executar
+QA-073;Flutter Test;test/auth_screen_test.dart;QA-73 renderiza login de cliente;A executar
+QA-074;Flutter Test;test/auth_screen_test.dart;QA-74 login vazio apresenta os dois erros;A executar
+QA-075;Flutter Test;test/auth_screen_test.dart;QA-75 login com email e senha vazia exige senha;A executar
+QA-076;Flutter Test;test/auth_screen_test.dart;QA-76 login com senha e email vazio exige email;A executar
+QA-077;Flutter Test;test/auth_screen_test.dart;QA-77 login incorreto nao autentica;A executar
+QA-078;Flutter Test;test/auth_screen_test.dart;QA-78 alterna entre login e cadastro;A executar
+QA-079;Flutter Test;test/auth_screen_test.dart;QA-79 cadastro vazio exige nome email CPF e senha;A executar
+QA-080;Flutter Test;test/auth_screen_test.dart;QA-80 cadastro rejeita email sem formato valido;A executar
+QA-081;Flutter Test;test/auth_screen_test.dart;QA-81 cadastro rejeita CPF invalido;A executar
+QA-082;Flutter Test;test/auth_screen_test.dart;QA-82 cadastro rejeita senha com menos de seis caracteres;A executar
+QA-083;Flutter Test;test/auth_screen_test.dart;QA-83 cadastro de empresa exige razao social e CNPJ;A executar
+QA-084;Flutter Test;test/auth_screen_test.dart;QA-84 senha pode ser mostrada e ocultada;A executar
+QA-085;Flutter Test;test/auth_screen_test.dart;QA-85 recuperacao de senha mostra orientacao;A executar
+QA-086;Flutter Test;test/auth_screen_test.dart;QA-86 admin invalido nao recebe acesso;A executar
+QA-087;Flutter Test;test/auth_screen_test.dart;QA-87 acessa cadastro administrativo e retorna;A executar
+QA-088;Flutter Test;test/auth_screen_test.dart;QA-88 cadastro e autenticacao de cliente funcionam;A executar
+QA-089;Flutter Test;test/auth_screen_test.dart;QA-89 cadastro administrativo autentica como administrador;A executar
+QA-090;Flutter Test;test/cart_screen_test.dart;QA-90 mostra sacola vazia;A executar
+QA-091;Flutter Test;test/cart_screen_test.dart;QA-91 exibe produto e quantidade;A executar
+QA-092;Flutter Test;test/cart_screen_test.dart;QA-92 mostra subtotal de dois itens;A executar
+QA-093;Flutter Test;test/cart_screen_test.dart;QA-93 aumenta quantidade pelo botao;A executar
+QA-094;Flutter Test;test/cart_screen_test.dart;QA-94 diminui quantidade pelo botao;A executar
+QA-095;Flutter Test;test/cart_screen_test.dart;QA-95 remove item usando lixeira;A executar
+QA-096;Flutter Test;test/cart_screen_test.dart;QA-96 mostra aviso ao aplicar cupom;A executar
+QA-097;Flutter Test;test/cart_screen_test.dart;QA-97 pessoa fisica consegue abrir checkout;A executar
+QA-098;Flutter Test;test/cart_screen_test.dart;QA-98 pessoa juridica abaixo do minimo nao avanca;A executar
+QA-099;Flutter Test;test/cart_screen_test.dart;QA-99 pessoa juridica no minimo consegue avancar;A executar
+QA-100;Flutter Test;test/payment_screen_test.dart;QA-100 checkout apresenta resumo e pagamento pix;A executar
+QA-101;Flutter Test;test/payment_screen_test.dart;QA-101 checkout apresenta campos de endereco;A executar
+QA-102;Flutter Test;test/payment_screen_test.dart;QA-102 alterna de pix para cartao;A executar
+QA-103;Flutter Test;test/payment_screen_test.dart;QA-103 volta do cartao para pix;A executar
+QA-104;Flutter Test;test/payment_screen_test.dart;QA-104 checkout vazio acusa CEP invalido;A executar
+QA-105;Flutter Test;test/payment_screen_test.dart;QA-105 checkout com CEP incorreto impede confirmacao;A executar
+QA-106;Flutter Test;test/payment_screen_test.dart;QA-106 cartao vazio exige numero e CVV;A executar
+QA-107;Flutter Test;test/payment_screen_test.dart;QA-107 endereco valido permite confirmar fluxo simulado;A executar
+QA-108;Flutter Test;test/admin_screen_test.dart;QA-108 painel administrativo mostra indicadores;A executar
+QA-109;Flutter Test;test/admin_screen_test.dart;QA-109 lista produtos existentes;A executar
+QA-110;Flutter Test;test/admin_screen_test.dart;QA-110 abre formulario de produto;A executar
+QA-111;Flutter Test;test/admin_screen_test.dart;QA-111 formulario vazio exige campos obrigatorios;A executar
+QA-112;Flutter Test;test/admin_screen_test.dart;QA-112 cancelar cadastro nao altera catalogo;A executar
+QA-113;Flutter Test;test/admin_screen_test.dart;QA-113 abre controle de estoque pelo painel;A executar
+QA-114;Flutter Test;test/admin_screen_test.dart;QA-114 exibe estado de catalogo sem produtos;A executar
+QA-115;Flutter Test;test/inventory_screen_test.dart;QA-115 exibe controle de estoque;A executar
+QA-116;Flutter Test;test/inventory_screen_test.dart;QA-116 filtro de esgotados conta produtos sem estoque;A executar
+QA-117;Flutter Test;test/inventory_screen_test.dart;QA-117 filtro de estoque baixo conta itens criticos;A executar
+QA-118;Flutter Test;test/inventory_screen_test.dart;QA-118 filtro disponiveis exclui estoque baixo;A executar
+QA-119;Flutter Test;test/inventory_screen_test.dart;QA-119 busca SKU sem diferenciar letras;A executar
+QA-120;Flutter Test;test/inventory_screen_test.dart;QA-120 termo inexistente mostra lista vazia;A executar
+QA-121;Flutter Test;test/inventory_screen_test.dart;QA-121 limpar busca restaura o catalogo;A executar
+QA-122;Cypress;cypress/e2e/admin_acesso.cy.js;QA-122 abre o login administrativo;A executar
+QA-123;Cypress;cypress/e2e/admin_acesso.cy.js;QA-123 abre cadastro de empresa;A executar
+QA-124;Cypress;cypress/e2e/admin_acesso.cy.js;QA-124 permite retornar ao login administrativo;A executar
+QA-125;Cypress;cypress/e2e/admin_acesso.cy.js;QA-125 permite voltar ao login de cliente;A executar
+QA-126;Cypress;cypress/e2e/admin_acesso.cy.js;QA-126 cadastro de empresa vazio exibe validacao de CNPJ;A executar
+QA-127;Flutter Test;test/home_navigation_test.dart;QA-127 cliente ve navegacao sem admin;A executar
+QA-128;Flutter Test;test/home_navigation_test.dart;QA-128 administrador ve acesso a gestao;A executar
+QA-129;Flutter Test;test/home_navigation_test.dart;QA-129 cliente acessa sacola pelo cabecalho;A executar
+QA-130;Flutter Test;test/home_navigation_test.dart;QA-130 cliente acessa area da conta;A executar
+QA-131;Flutter Test;test/home_navigation_test.dart;QA-131 conta vazia solicita endereco;A executar
+QA-132;Flutter Test;test/home_navigation_test.dart;QA-132 sair da conta chama logout;A executar
+QA-133;Flutter Test;test/home_navigation_test.dart;QA-133 administrador abre painel pelo menu;A executar
+QA-134;Flutter Test;test/home_navigation_test.dart;QA-134 formulario de endereco impede CEP invalido;A executar
+QA-135;Flutter Test;test/home_navigation_test.dart;QA-135 cancela cadastro de endereco sem alterar perfil;A executar
+QA-136;Flutter Test;test/admin_crud_test.dart;QA-136 cadastra produto pelo painel;A executar
+QA-137;Flutter Test;test/admin_crud_test.dart;QA-137 cancelar exclusao preserva produto;A executar
+QA-138;Flutter Test;test/admin_crud_test.dart;QA-138 confirma exclusao de produto;A executar
+QA-139;Flutter Test;test/admin_crud_test.dart;QA-139 altera preco de produto pelo painel;A executar
+QA-140;Flutter Test;test/inventory_screen_test.dart;QA-140 aumenta uma unidade pelo controle;A executar
+QA-141;Flutter Test;test/inventory_screen_test.dart;QA-141 diminui uma unidade pelo controle;A executar
+QA-142;Flutter Test;test/inventory_screen_test.dart;QA-142 produto esgotado nao fica com quantidade negativa;A executar

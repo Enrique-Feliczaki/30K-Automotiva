@@ -15,6 +15,6 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "cypress": "^16.2.1"
+    "cypress": "^16.3.0"
   }
 }
