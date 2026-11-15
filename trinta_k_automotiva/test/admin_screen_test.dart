@@ -72,16 +72,16 @@ void main() {
   testWidgets('QA-111 formulario vazio exige campos obrigatorios', (tester) async {
     await open(tester);
     await tester.tap(find.text('Novo produto').last);
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('Salvar produto'),
+      find.text('Salvar produto').hitTestable(),
       180,
       scrollable: find.descendant(
         of: find.byType(Dialog),
         matching: find.byType(Scrollable),
       ).first,
     );
-    await tester.tap(find.text('Salvar produto'));
+    await tester.tap(find.text('Salvar produto').hitTestable());
     await tester.pump();
     expect(find.text('Campo obrigatório'), findsWidgets);
     expect(find.byType(Dialog), findsOneWidget);

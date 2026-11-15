@@ -135,6 +135,13 @@ class ProductStore extends ChangeNotifier {
   ];
 
   List<StoreProduct> get products => List.unmodifiable(_products);
+  void restore(Iterable<StoreProduct> products) {
+    _products
+      ..clear()
+      ..addAll(products);
+    notifyListeners();
+  }
+
   int get totalUnits =>
       _products.fold(0, (sum, product) => sum + product.stock);
   int get lowStockCount => _products.where((product) => product.isLow).length;

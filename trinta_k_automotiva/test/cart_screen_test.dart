@@ -32,13 +32,15 @@ void main() {
   }
 
   void add({int quantity = 1, double price = 40}) {
-    cart.add(CartItem(
-      name: 'Produto QA Carrinho',
-      category: 'Shampoos',
-      price: price,
-      quantity: quantity,
-      icon: Icons.local_drink_outlined,
-    ));
+    cart.add(
+      CartItem(
+        name: 'Produto QA Carrinho',
+        category: 'Shampoos',
+        price: price,
+        quantity: quantity,
+        icon: Icons.local_drink_outlined,
+      ),
+    );
   }
 
   Future<void> open(WidgetTester tester) async {
@@ -47,10 +49,12 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     navigationObserver.lastPushedRoute = null;
-    await tester.pumpWidget(MaterialApp(
-      home: const CartScreen(),
-      navigatorObservers: [navigationObserver],
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: const CartScreen(),
+        navigatorObservers: [navigationObserver],
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -89,6 +93,9 @@ void main() {
     await open(tester);
     expect(cart.subtotal, 25);
     expect(find.text('R\$ 25,00'), findsWidgets);
+    expect(find.text('Frete fixo: R\$ 50,00'), findsOneWidget);
+    expect(find.text('R\$ 50,00'), findsOneWidget);
+    expect(find.text('R\$ 75,00'), findsNWidgets(2));
   });
 
   testWidgets('QA-93 aumenta quantidade pelo botao', (tester) async {
@@ -98,6 +105,7 @@ void main() {
     await tester.pump();
     expect(cart.unitCount, 2);
     expect(cart.subtotal, 80);
+    expect(find.text('R\$ 130,00'), findsNWidgets(2));
   });
 
   testWidgets('QA-94 diminui quantidade pelo botao', (tester) async {
@@ -118,55 +126,63 @@ void main() {
     expect(find.text('Sua sacola está vazia'), findsOneWidget);
   });
 
-  testWidgets('QA-96 mostra aviso ao aplicar cupom', (tester) async {
-    add();
-    await open(tester);
-    await tester.ensureVisible(find.text('Aplicar'));
-    await tester.tap(find.text('Aplicar'));
-    await tester.pump();
-    expect(find.text('Cupom indisponível para validação no momento.'), findsOneWidget);
-  });
-
   testWidgets('QA-97 pessoa fisica consegue abrir checkout', (tester) async {
     add();
     await open(tester);
     final label = find.text('Finalizar pedido');
     await tester.ensureVisible(label);
-    final action = find.ancestor(
-      of: label,
-      matching: find.byWidgetPredicate((widget) => widget is FilledButton),
-    ).first;
+    final action = find
+        .ancestor(
+          of: label,
+          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+        )
+        .first;
     await tester.tap(action);
     await tester.pumpAndSettle();
-    expect(navigationObserver.lastPushedRoute, isNotNull,
-        reason: 'Finalizar pedido não abriu a rota de pagamento');
+    expect(
+      navigationObserver.lastPushedRoute,
+      isNotNull,
+      reason: 'Finalizar pedido não abriu a rota de pagamento',
+    );
     expect(find.byType(PaymentScreen), findsOneWidget);
   });
 
-  testWidgets('QA-98 pessoa juridica abaixo do minimo nao avanca', (tester) async {
+  testWidgets('QA-98 pessoa juridica abaixo do minimo nao avanca', (
+    tester,
+  ) async {
     profile.isCompany = true;
     add(quantity: 1, price: 100);
     await open(tester);
     await tester.tap(find.text('Finalizar pedido'));
     await tester.pump();
     expect(find.byType(PaymentScreen), findsNothing);
-    expect(find.textContaining('Pedido mínimo para pessoa jurídica'), findsOneWidget);
+    expect(
+      find.textContaining('Pedido mínimo para pessoa jurídica'),
+      findsOneWidget,
+    );
   });
 
-  testWidgets('QA-99 pessoa juridica no minimo consegue avancar', (tester) async {
+  testWidgets('QA-99 pessoa juridica no minimo consegue avancar', (
+    tester,
+  ) async {
     profile.isCompany = true;
     add(quantity: 1, price: 2500);
     await open(tester);
     final label = find.text('Finalizar pedido');
     await tester.ensureVisible(label);
-    final action = find.ancestor(
-      of: label,
-      matching: find.byWidgetPredicate((widget) => widget is FilledButton),
-    ).first;
+    final action = find
+        .ancestor(
+          of: label,
+          matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+        )
+        .first;
     await tester.tap(action);
     await tester.pumpAndSettle();
-    expect(navigationObserver.lastPushedRoute, isNotNull,
-        reason: 'Finalizar pedido não abriu a rota de pagamento');
+    expect(
+      navigationObserver.lastPushedRoute,
+      isNotNull,
+      reason: 'Finalizar pedido não abriu a rota de pagamento',
+    );
     expect(find.byType(PaymentScreen), findsOneWidget);
   });
 }

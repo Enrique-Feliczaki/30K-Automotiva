@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'responsive_layout.dart';
+
 import 'auth_screen.dart';
 import 'cart_item.dart';
 import 'cart_screen.dart';
@@ -7,8 +9,70 @@ import 'cart_store.dart';
 import 'admin_screen.dart';
 import 'product_store.dart';
 import 'customer_profile.dart';
+import 'local_database.dart';
+import 'local_persistence.dart';
 
-void main() => runApp(const TrintaKApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const _LocalAppStartup());
+}
+
+class _LocalAppStartup extends StatefulWidget {
+  const _LocalAppStartup();
+
+  @override
+  State<_LocalAppStartup> createState() => _LocalAppStartupState();
+}
+
+class _LocalAppStartupState extends State<_LocalAppStartup> {
+  late Future<LocalPersistence> _initialization = _open();
+
+  Future<LocalPersistence> _open() async {
+    final persistence = LocalPersistence(LocalDatabase.onDevice());
+    try {
+      await persistence.initialize();
+      return persistence;
+    } catch (_) {
+      await persistence.close();
+      rethrow;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<LocalPersistence>(
+    future: _initialization,
+    builder: (context, snapshot) {
+      if (snapshot.hasData) return const TrintaKApp();
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark(),
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: snapshot.hasError
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Não foi possível abrir os dados locais. Verifique o espaço e as permissões de armazenamento do aparelho.',
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: () =>
+                              setState(() => _initialization = _open()),
+                          child: const Text('Tentar novamente'),
+                        ),
+                      ],
+                    )
+                  : const CircularProgressIndicator(),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
 
 const _bg = Color(0xFF0A0A0A);
 const _panel = Color(0xFF171717);
@@ -32,6 +96,47 @@ class _TrintaKAppState extends State<TrintaKApp> {
   Widget build(BuildContext context) => MaterialApp(
     title: '30K Automotiva',
     debugShowCheckedModeBanner: false,
+    builder: (context, child) {
+      final persistence = LocalPersistence.active;
+      if (persistence == null) return child!;
+      return ListenableBuilder(
+        listenable: persistence,
+        builder: (context, _) => Column(
+          children: [
+            if (persistence.lastError != null)
+              Material(
+                color: const Color(0xFF713138),
+                child: SafeArea(
+                  bottom: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'As últimas alterações ainda não foram salvas no aparelho.',
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            try {
+                              await persistence.retry();
+                            } catch (_) {
+                              /* Keep the visible error until a successful save. */
+                            }
+                          },
+                          child: const Text('Tentar salvar'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            Expanded(child: child!),
+          ],
+        ),
+      );
+    },
     theme: ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: _bg,
@@ -43,8 +148,21 @@ class _TrintaKAppState extends State<TrintaKApp> {
       useMaterial3: true,
     ),
     home: _hasEntered
-        ? HomeScreen(isAdmin: _isAdmin, onLogout: () => setState(() { _hasEntered = false; _isAdmin = false; }))
-        : AuthScreen(onAuthenticated: (isAdmin) => setState(() { _hasEntered = true; _isAdmin = isAdmin; })),
+        ? HomeScreen(
+            isAdmin: _isAdmin,
+            onLogout: () => setState(() {
+              LocalPersistence.active?.switchCustomer(null);
+              CustomerProfile.instance.restore({});
+              _hasEntered = false;
+              _isAdmin = false;
+            }),
+          )
+        : AuthScreen(
+            onAuthenticated: (isAdmin) => setState(() {
+              _hasEntered = true;
+              _isAdmin = isAdmin;
+            }),
+          ),
   );
 }
 
@@ -66,9 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final showAdmin = widget.isAdmin;
-    final navigationIndex = showAdmin
-        ? _tab
-        : (_tab == 0 ? 0 : (_tab == 2 ? 1 : 2));
+    final navigationIndex = _tab == 0 ? 0 : (showAdmin ? 2 : 1);
     final destinations = <NavigationDestination>[
       const NavigationDestination(
         icon: Icon(Icons.home_outlined),
@@ -82,58 +198,50 @@ class _HomeScreenState extends State<HomeScreen> {
           label: 'Admin',
         ),
       const NavigationDestination(
-        icon: Icon(Icons.favorite_border),
-        selectedIcon: Icon(Icons.favorite),
-        label: 'Favoritos',
-      ),
-      const NavigationDestination(
         icon: Icon(Icons.person_outline),
         selectedIcon: Icon(Icons.person),
         label: 'Conta',
       ),
     ];
-    return Scaffold(
-    body: SafeArea(
-      bottom: false,
-      child: _tab == 3
-          ? _accountPage()
-          : CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _header()),
-          SliverToBoxAdapter(child: _search()),
-          SliverToBoxAdapter(child: _hero()),
-          SliverToBoxAdapter(child: _categoriesSection()),
-          SliverToBoxAdapter(child: _offersSection()),
-          SliverToBoxAdapter(child: _benefitStrip()),
-          const SliverToBoxAdapter(child: SizedBox(height: 28)),
-        ],
+    return ResponsiveScaffold(
+      body: SafeArea(
+        bottom: false,
+        child: _tab == 2
+            ? _accountPage()
+            : CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: _header()),
+                  SliverToBoxAdapter(child: _search()),
+                  SliverToBoxAdapter(child: _hero()),
+                  SliverToBoxAdapter(child: _categoriesSection()),
+                  SliverToBoxAdapter(child: _offersSection()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                ],
+              ),
       ),
-    ),
-    bottomNavigationBar: NavigationBar(
-      height: 64,
-      selectedIndex: navigationIndex,
-      backgroundColor: const Color(0xFF111111),
-      indicatorColor: const Color(0xFF351518),
-      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-      onDestinationSelected: (index) {
-        if (showAdmin && index == 1) {
-          Navigator.of(context)
-              .push(
-                MaterialPageRoute<void>(builder: (_) => const AdminScreen()),
-              )
-              .then((_) {
-                if (mounted) setState(() => _tab = 0);
-              });
-          return;
-        }
-        final tab = showAdmin
-            ? index
-            : (index == 0 ? 0 : (index == 1 ? 2 : 3));
-        setState(() => _tab = tab);
-      },
-      destinations: destinations,
-    ),
-  );
+      bottomNavigationBar: NavigationBar(
+        height: 56 + MediaQuery.textScalerOf(context).scale(16),
+        selectedIndex: navigationIndex,
+        backgroundColor: const Color(0xFF111111),
+        indicatorColor: const Color(0xFF351518),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        onDestinationSelected: (index) {
+          if (showAdmin && index == 1) {
+            Navigator.of(context)
+                .push(
+                  MaterialPageRoute<void>(builder: (_) => const AdminScreen()),
+                )
+                .then((_) {
+                  if (mounted) setState(() => _tab = 0);
+                });
+            return;
+          }
+          final tab = index == 0 ? 0 : 2;
+          setState(() => _tab = tab);
+        },
+        destinations: destinations,
+      ),
+    );
   }
 
   Widget _accountPage() {
@@ -141,9 +249,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 24, 18, 28),
       children: [
-        const Text('Minha conta', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+        const Text(
+          'Minha conta',
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+        ),
         const SizedBox(height: 6),
-        const Text('Informações pessoais e endereço de entrega', style: TextStyle(color: _muted, fontSize: 12)),
+        const Text(
+          'Informações pessoais e endereço de entrega',
+          style: TextStyle(color: _muted, fontSize: 12),
+        ),
         const SizedBox(height: 22),
         _profileSection(
           icon: Icons.person_outline,
@@ -159,16 +273,31 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.location_on_outlined,
           title: 'Endereço',
           children: [
-            Text(profile.address.isEmpty ? 'Informe seu endereço ao finalizar um pedido.' : profile.address,
-              style: const TextStyle(color: _silver, fontSize: 13, height: 1.6)),
+            Text(
+              profile.address.isEmpty
+                  ? 'Informe seu endereço ao finalizar um pedido.'
+                  : profile.address,
+              style: const TextStyle(color: _silver, fontSize: 13, height: 1.6),
+            ),
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 onPressed: _editAddress,
-                icon: Icon(profile.address.isEmpty ? Icons.add_location_alt_outlined : Icons.edit_location_alt_outlined, size: 17),
-                label: Text(profile.address.isEmpty ? 'Cadastrar endereço' : 'Alterar endereço'),
-                style: TextButton.styleFrom(foregroundColor: const Color(0xFFFF737B)),
+                icon: Icon(
+                  profile.address.isEmpty
+                      ? Icons.add_location_alt_outlined
+                      : Icons.edit_location_alt_outlined,
+                  size: 17,
+                ),
+                label: Text(
+                  profile.address.isEmpty
+                      ? 'Cadastrar endereço'
+                      : 'Alterar endereço',
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFFF737B),
+                ),
               ),
             ),
           ],
@@ -182,30 +311,58 @@ class _HomeScreenState extends State<HomeScreen> {
             foregroundColor: const Color(0xFFFF737B),
             side: const BorderSide(color: Color(0xFF713138)),
             minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _profileSection({required IconData icon, required String title, required List<Widget> children}) => Container(
+  Widget _profileSection({
+    required IconData icon,
+    required String title,
+    required List<Widget> children,
+  }) => Container(
     padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0xFF303030))),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Row(children: [Icon(icon, color: const Color(0xFFFF646D), size: 18), const SizedBox(width: 8), Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800))]),
-      const SizedBox(height: 14),
-      ...children,
-    ]),
+    decoration: BoxDecoration(
+      color: _panel,
+      borderRadius: BorderRadius.circular(13),
+      border: Border.all(color: const Color(0xFF303030)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ResponsiveRow(
+          children: [
+            Icon(icon, color: const Color(0xFFFF646D), size: 18),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        ...children,
+      ],
+    ),
   );
 
   Widget _profileValue(String label, String value) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(color: _muted, fontSize: 10)),
-      const SizedBox(height: 3),
-      Text(value.isEmpty ? 'Não informado' : value, style: const TextStyle(color: _silver, fontSize: 13)),
-    ]),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: _muted, fontSize: 10)),
+        const SizedBox(height: 3),
+        Text(
+          value.isEmpty ? 'Não informado' : value,
+          style: const TextStyle(color: _silver, fontSize: 13),
+        ),
+      ],
+    ),
   );
 
   Future<void> _editAddress() async {
@@ -221,56 +378,81 @@ class _HomeScreenState extends State<HomeScreen> {
         value == null || value.trim().isEmpty ? 'Campo obrigatório' : null;
     InputDecoration decoration(String label, String hint) => InputDecoration(
       labelText: label,
+      errorMaxLines: 3,
       hintText: hint,
       filled: true,
       fillColor: const Color(0xFF111111),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
     );
-    Widget field(TextEditingController controller, String label, String hint,
-        {TextInputType? keyboardType, String? Function(String?)? validator}) =>
-        TextFormField(
-          controller: controller,
-          keyboardType: keyboardType,
-          validator: validator ?? requiredValue,
-          decoration: decoration(label, hint),
-        );
+    Widget field(
+      TextEditingController controller,
+      String label,
+      String hint, {
+      TextInputType? keyboardType,
+      String? Function(String?)? validator,
+    }) => TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      validator: validator ?? requiredValue,
+      decoration: decoration(label, hint),
+    );
 
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        scrollable: true,
         backgroundColor: _panel2,
-        title: Text(profile.address.isEmpty ? 'Cadastrar endereço' : 'Alterar endereço'),
+        title: Text(
+          profile.address.isEmpty ? 'Cadastrar endereço' : 'Alterar endereço',
+        ),
         content: Form(
           key: formKey,
           child: SizedBox(
             width: 420,
             child: SingleChildScrollView(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                field(postalCode, 'CEP', '00000-000', keyboardType: TextInputType.number,
-                  validator: (value) => value == null || value.replaceAll(RegExp(r'\D'), '').length != 8 ? 'Informe um CEP válido' : null),
-                const SizedBox(height: 10),
-                Row(children: [
-                  Expanded(child: field(state, 'Estado', 'SP')),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 2, child: field(city, 'Cidade', 'Sua cidade')),
-                ]),
-                const SizedBox(height: 10),
-                field(neighborhood, 'Bairro', 'Seu bairro'),
-                const SizedBox(height: 10),
-                Row(children: [
-                  Expanded(flex: 3, child: field(street, 'Rua', 'Nome da rua')),
-                  const SizedBox(width: 8),
-                  Expanded(child: field(houseNumber, 'Número', 'Nº', keyboardType: TextInputType.number)),
-                ]),
-              ]),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  field(
+                    postalCode,
+                    'CEP',
+                    '00000-000',
+                    keyboardType: TextInputType.number,
+                    validator: (value) =>
+                        value == null ||
+                            value.replaceAll(RegExp(r'\D'), '').length != 8
+                        ? 'Informe um CEP válido'
+                        : null,
+                  ),
+                  const SizedBox(height: 10),
+                  field(state, 'Estado', 'SP'),
+                  const SizedBox(height: 10),
+                  field(city, 'Cidade', 'Sua cidade'),
+                  const SizedBox(height: 10),
+                  field(neighborhood, 'Bairro', 'Seu bairro'),
+                  const SizedBox(height: 10),
+                  field(street, 'Rua', 'Nome da rua'),
+                  const SizedBox(height: 10),
+                  field(
+                    houseNumber,
+                    'Número',
+                    'Nº',
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
             onPressed: () {
-              if (formKey.currentState!.validate()) Navigator.pop(dialogContext, true);
+              if (formKey.currentState!.validate())
+                Navigator.pop(dialogContext, true);
             },
             child: const Text('Salvar endereço'),
           ),
@@ -286,7 +468,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ..neighborhood = neighborhood.text.trim()
         ..street = street.text.trim()
         ..houseNumber = houseNumber.text.trim();
-      setState(() {});
+      profile.save();
+      try {
+        await LocalPersistence.active?.flush();
+      } catch (_) {
+        // The app-wide storage banner offers a retry without discarding edits.
+      }
+      if (mounted) setState(() {});
     }
     postalCode.dispose();
     state.dispose();
@@ -330,11 +518,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        _roundAction(Icons.favorite_border),
-        if (!widget.isAdmin) ...[
-          const SizedBox(width: 8),
-          _cartButton(),
-        ],
+        if (!widget.isAdmin) _cartButton(),
       ],
     ),
   );
@@ -393,7 +577,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _search() => Padding(
     padding: const EdgeInsets.fromLTRB(18, 8, 18, 16),
     child: Container(
-      height: 46,
+      constraints: const BoxConstraints(minHeight: 46),
       decoration: BoxDecoration(
         color: _panel,
         borderRadius: BorderRadius.circular(12),
@@ -405,7 +589,6 @@ class _HomeScreenState extends State<HomeScreen> {
           hintText: 'O que você está procurando?',
           hintStyle: TextStyle(color: _muted, fontSize: 13),
           prefixIcon: Icon(Icons.search, color: _silver, size: 20),
-          suffixIcon: Icon(Icons.tune, color: _muted, size: 19),
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(vertical: 13),
         ),
@@ -416,7 +599,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _hero() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 18),
     child: Container(
-      height: 250,
+      constraints: const BoxConstraints(minHeight: 250),
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
@@ -483,7 +666,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(height: 18),
                 const Text(
                   'Seu carro\nno melhor estado.',
                   style: TextStyle(
@@ -516,15 +699,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: () => setState(() => _tab = 1),
+                  onPressed: () => setState(() => _tab = 0),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        'Explorar produtos',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                      Flexible(
+                        child: Text(
+                          'Explorar produtos',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       SizedBox(width: 7),
@@ -548,7 +733,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _sectionTitle('COMPRE POR CATEGORIA', 'Ver todas'),
         const SizedBox(height: 13),
         SizedBox(
-          height: 91,
+          height: 70 + MediaQuery.textScalerOf(context).scale(21),
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             scrollDirection: Axis.horizontal,
@@ -628,24 +813,26 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         if (CustomerProfile.instance.isCompany)
           GestureDetector(
-          onTap: _openAdmin,
-          child: const Row(
-            children: [
-              Text('Gerenciar', style: TextStyle(fontSize: 10, color: _silver)),
-              SizedBox(width: 3),
-              Icon(Icons.chevron_right, size: 15, color: _silver),
-            ],
+            onTap: _openAdmin,
+            child: const Row(
+              children: [
+                Text(
+                  'Gerenciar',
+                  style: TextStyle(fontSize: 10, color: _silver),
+                ),
+                SizedBox(width: 3),
+                Icon(Icons.chevron_right, size: 15, color: _silver),
+              ],
+            ),
           ),
-        ),
       ],
     ),
   );
 
   void _openAdmin() {
     if (!CustomerProfile.instance.isCompany) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const AdminScreen()),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const AdminScreen()));
   }
 
   Widget _offersSection() => ListenableBuilder(
@@ -686,18 +873,27 @@ class _HomeScreenState extends State<HomeScreen> {
             else
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: products.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 9,
-                    childAspectRatio: 2.16,
-                  ),
-                  itemBuilder: (context, index) =>
-                      _catalogProductCard(products[index]),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final scale =
+                        MediaQuery.textScalerOf(context).scale(14) / 14;
+                    final columns = (constraints.maxWidth / (180 * scale))
+                        .floor()
+                        .clamp(1, 5);
+                    final width =
+                        (constraints.maxWidth - (columns - 1) * 12) / columns;
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (final product in products)
+                          SizedBox(
+                            width: width,
+                            child: _catalogProductCard(product),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
           ],
@@ -830,15 +1026,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const Positioned(left: 8, top: 8, child: _OfferTag()),
-              Positioned(
-                right: 7,
-                top: 7,
-                child: Icon(
-                  Icons.favorite_border,
-                  size: 17,
-                  color: Colors.white.withValues(alpha: .75),
-                ),
-              ),
             ],
           ),
           Padding(
@@ -917,141 +1104,148 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _catalogProductCard(StoreProduct product) => Material(
     color: Colors.transparent,
     child: InkWell(
-    borderRadius: BorderRadius.circular(13),
-    onTap: () => _openProductDetails(product),
-    child: Container(
-    width: double.infinity,
-    decoration: BoxDecoration(
-      color: _panel,
       borderRadius: BorderRadius.circular(13),
-      border: Border.all(color: const Color(0xFF292929)),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Stack(
-          children: [
-            Container(
-              height: 46,
-              width: double.infinity,
-              clipBehavior: Clip.antiAlias,
-              decoration: const BoxDecoration(
-                color: Color(0xFF111111),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-              ),
-              child: product.imageBytes == null
-                  ? Center(
-                      child: Icon(
-                        product.icon,
-                        size: 32,
-                        color: const Color(0xFF777B80),
-                      ),
-                    )
-                  : Image.memory(
-                      product.imageBytes!,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                    ),
-            ),
-            if (product.stock == 0)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withValues(alpha: .62),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'ESGOTADO',
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ),
-          ],
+      onTap: () => _openProductDetails(product),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: _panel,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: const Color(0xFF292929)),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(6, 4, 5, 2),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                product.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                fontSize: 8,
-                height: 1.2,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Expanded(
-                    child: _customerPrice(product) == null
-                        ? const Text('Atacado indisponível', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 7, color: _muted))
-                        : Text(
-                            formatCurrency(_customerPrice(product)!),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800),
-                          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Container(
+                  height: 140,
+                  width: double.infinity,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF111111),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
                   ),
-                  SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: IconButton.filledTonal(
-                      tooltip: product.stock == 0
-                          ? 'Produto esgotado'
-                          : 'Adicionar à sacola',
-                      onPressed: product.stock == 0 || _customerPrice(product) == null
-                          ? null
-                          : () => _addCatalogProduct(product),
-                      padding: EdgeInsets.zero,
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF351518),
-                        foregroundColor: const Color(0xFFFF737B),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                  child: product.imageBytes == null
+                      ? Center(
+                          child: Icon(
+                            product.icon,
+                            size: 32,
+                            color: const Color(0xFF777B80),
+                          ),
+                        )
+                      : Image.memory(
+                          product.imageBytes!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                        ),
+                ),
+                if (product.stock == 0)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: .62),
+                      alignment: Alignment.center,
+                      child: const Text(
+                        'ESGOTADO',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1,
                         ),
                       ),
-                      icon: const Icon(Icons.add_shopping_cart, size: 12),
                     ),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.2,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  ResponsiveRow(
+                    breakpoint: 170,
+                    children: [
+                      Expanded(
+                        child: _customerPrice(product) == null
+                            ? const Text(
+                                'Atacado indisponível',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, color: _muted),
+                              )
+                            : Text(
+                                formatCurrency(_customerPrice(product)!),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                      ),
+                      SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: IconButton.filledTonal(
+                          tooltip: product.stock == 0
+                              ? 'Produto esgotado'
+                              : 'Adicionar à sacola',
+                          onPressed:
+                              product.stock == 0 ||
+                                  _customerPrice(product) == null
+                              ? null
+                              : () => _addCatalogProduct(product),
+                          padding: EdgeInsets.zero,
+                          style: IconButton.styleFrom(
+                            backgroundColor: const Color(0xFF351518),
+                            foregroundColor: const Color(0xFFFF737B),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          icon: const Icon(Icons.add_shopping_cart, size: 20),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     ),
-  )));
+  );
 
   Future<void> _openProductDetails(StoreProduct product) async {
-    final added = await Navigator.of(context).push<bool>(
-      MaterialPageRoute<bool>(
-        builder: (_) => ProductDetailsScreen(product: product, isAdmin: widget.isAdmin),
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            ProductDetailsScreen(product: product, isAdmin: widget.isAdmin),
       ),
     );
-    if (added == true && mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('${product.name} adicionado à sacola'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-    }
   }
 
-  void _addCatalogProduct(StoreProduct product) {
+  Future<void> _addCatalogProduct(StoreProduct product) async {
     final price = _customerPrice(product);
     if (price == null) return;
-    CartStore.instance.add(
+    final added = CartStore.instance.add(
       CartItem(
+        productId: product.id,
         name: product.name,
         category: product.category,
         price: price,
@@ -1059,6 +1253,18 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: product.icon,
       ),
     );
+    if (!added) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Quantidade máxima em estoque atingida.')),
+      );
+      return;
+    }
+    try {
+      await LocalPersistence.active?.flush();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -1096,40 +1302,59 @@ class _HomeScreenState extends State<HomeScreen> {
       );
   }
 
-  Widget _benefitStrip() => Padding(
-    padding: const EdgeInsets.fromLTRB(18, 20, 18, 0),
-    child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
-      decoration: BoxDecoration(
-        color: _panel,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF292929)),
-      ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _Benefit(icon: Icons.local_shipping_outlined, title: 'Envio rápido'),
-          _Benefit(icon: Icons.verified_outlined, title: 'Linha original'),
-          _Benefit(icon: Icons.support_agent, title: 'Atendimento'),
-        ],
-      ),
-    ),
-  );
 }
 
-class ProductDetailsScreen extends StatelessWidget {
-  const ProductDetailsScreen({super.key, required this.product, required this.isAdmin});
+class ProductDetailsScreen extends StatefulWidget {
+  const ProductDetailsScreen({
+    super.key,
+    required this.product,
+    required this.isAdmin,
+  });
 
   final StoreProduct product;
   final bool isAdmin;
 
   @override
-  Widget build(BuildContext context) {
+  State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
+}
+
+class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
+  int _quantity = 1;
+  bool _adding = false;
+  bool get isAdmin => widget.isAdmin;
+
+  StoreProduct get product => ProductStore.instance.products.firstWhere(
+    (product) => product.id == widget.product.id,
+    orElse: () => widget.product.copyWith(stock: 0),
+  );
+
+  CartItem _cartItem(int quantity) => CartItem(
+    productId: product.id,
+    name: product.name,
+    category: product.category,
+    price: _customerPrice(product) ?? product.price,
+    quantity: quantity,
+    icon: product.icon,
+  );
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: Listenable.merge([ProductStore.instance, CartStore.instance]),
+    builder: (context, _) => _buildDetails(context),
+  );
+
+  Widget _buildDetails(BuildContext context) {
+    final remaining =
+        (product.stock - CartStore.instance.quantityFor(_cartItem(1))).clamp(
+          0,
+          product.stock < 0 ? 0 : product.stock,
+        );
+    final quantity = _quantity.clamp(1, remaining > 0 ? remaining : 1);
     final image = product.imageBytes == null
         ? Center(child: Icon(product.icon, size: 112, color: _silver))
         : Image.memory(product.imageBytes!, fit: BoxFit.contain);
 
-    return Scaffold(
+    return ResponsiveScaffold(
       appBar: AppBar(
         title: const Text('Detalhes do produto'),
         backgroundColor: _bg,
@@ -1156,26 +1381,106 @@ class ProductDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 22),
-                  Text(product.category.toUpperCase(),
-                    style: const TextStyle(color: Color(0xFFFF737B), fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                  Text(
+                    product.category.toUpperCase(),
+                    style: const TextStyle(
+                      color: Color(0xFFFF737B),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                    ),
+                  ),
                   const SizedBox(height: 7),
-                  Text(product.name, style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, height: 1.2)),
+                  Text(
+                    product.name,
+                    style: const TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w900,
+                      height: 1.2,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   if (_customerPrice(product) != null)
-                    Text(formatCurrency(_customerPrice(product)!), style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w900))
+                    Text(
+                      formatCurrency(_customerPrice(product)!),
+                      style: const TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    )
                   else
-                    const Text('Preço no atacado indisponível', style: TextStyle(color: _muted, fontSize: 14)),
+                    const Text(
+                      'Preço no atacado indisponível',
+                      style: TextStyle(color: _muted, fontSize: 14),
+                    ),
                   const SizedBox(height: 17),
                   Container(
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(color: _panel, borderRadius: BorderRadius.circular(12)),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(product.stock > 0 ? 'Em estoque: ${product.stock} unidades' : 'Produto esgotado',
-                        style: TextStyle(color: product.stock > 0 ? const Color(0xFF81D79A) : const Color(0xFFFF737B), fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 8),
-                      Text('Código: ${product.sku}', style: const TextStyle(color: _muted, fontSize: 13)),
-                    ]),
+                    decoration: BoxDecoration(
+                      color: _panel,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.stock > 0
+                              ? 'Em estoque: ${product.stock} unidades'
+                              : 'Produto esgotado',
+                          style: TextStyle(
+                            color: product.stock > 0
+                                ? const Color(0xFF81D79A)
+                                : const Color(0xFFFF737B),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Código: ${product.sku}',
+                          style: const TextStyle(color: _muted, fontSize: 13),
+                        ),
+                      ],
+                    ),
                   ),
+                  if (!isAdmin) ...[
+                    const SizedBox(height: 18),
+                    const Text('Quantidade'),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        IconButton.outlined(
+                          key: const ValueKey('product-quantity-decrease'),
+                          tooltip: 'Diminuir quantidade',
+                          onPressed: quantity > 1
+                              ? () => setState(() => _quantity = quantity - 1)
+                              : null,
+                          icon: const Icon(Icons.remove),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: Text(
+                            '$quantity',
+                            key: const ValueKey('product-quantity'),
+                          ),
+                        ),
+                        IconButton.outlined(
+                          key: const ValueKey('product-quantity-increase'),
+                          tooltip: 'Aumentar quantidade',
+                          onPressed: quantity < remaining
+                              ? () => setState(() => _quantity = quantity + 1)
+                              : null,
+                          icon: const Icon(Icons.add),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      remaining == 0
+                          ? 'Quantidade máxima em estoque atingida.'
+                          : 'Você pode adicionar mais $remaining unidades.',
+                      style: const TextStyle(color: _muted, fontSize: 12),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1186,32 +1491,71 @@ class ProductDetailsScreen extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(false),
                       icon: const Icon(Icons.arrow_back),
                       label: const Text('Voltar'),
-                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50),
+                      ),
                     )
-                  : Row(children: [
-                Expanded(child: OutlinedButton.icon(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Voltar'),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                )),
-                const SizedBox(width: 12),
-                Expanded(flex: 2, child: FilledButton.icon(
-                  onPressed: product.stock == 0 || _customerPrice(product) == null ? null : () {
-                    CartStore.instance.add(CartItem(
-                      name: product.name,
-                      category: product.category,
-                      price: _customerPrice(product)!,
-                      quantity: 1,
-                      icon: product.icon,
-                    ));
-                    Navigator.of(context).pop(true);
-                  },
-                  icon: const Icon(Icons.add_shopping_cart),
-                  label: const Text('Adicionar ao carrinho'),
-                  style: FilledButton.styleFrom(backgroundColor: _red, minimumSize: const Size.fromHeight(50)),
-                )),
-              ]),
+                  : ResponsiveRow(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            icon: const Icon(Icons.arrow_back),
+                            label: const Text('Voltar'),
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(50),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: FilledButton.icon(
+                            onPressed:
+                                remaining == 0 ||
+                                    _adding ||
+                                    _customerPrice(product) == null
+                                ? null
+                                : () async {
+                                    setState(() => _adding = true);
+                                    final added = CartStore.instance.add(
+                                      _cartItem(quantity),
+                                    );
+                                    if (!added) {
+                                      setState(() => _adding = false);
+                                      return;
+                                    }
+                                    try {
+                                      await LocalPersistence.active?.flush();
+                                    } catch (_) {
+                                      if (mounted)
+                                        setState(() => _adding = false);
+                                      return;
+                                    }
+                                    if (!context.mounted) return;
+                                    setState(() => _adding = false);
+                                    ScaffoldMessenger.of(context)
+                                      ..hideCurrentSnackBar()
+                                      ..showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Produto adicionado ao carrinho',
+                                          ),
+                                          duration: Duration(seconds: 2),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                  },
+                            icon: const Icon(Icons.add_shopping_cart),
+                            label: const Text('Adicionar ao carrinho'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _red,
+                              minimumSize: const Size.fromHeight(50),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ],
         ),
@@ -1236,20 +1580,5 @@ class _OfferTag extends StatelessWidget {
   );
 }
 
-double? _customerPrice(StoreProduct product) => CustomerProfile.instance.isCompany
-    ? product.compareAtPrice
-    : product.price;
-
-class _Benefit extends StatelessWidget {
-  const _Benefit({required this.icon, required this.title});
-  final IconData icon;
-  final String title;
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Icon(icon, size: 19, color: _silver),
-      const SizedBox(height: 5),
-      Text(title, style: const TextStyle(fontSize: 8, color: _muted)),
-    ],
-  );
-}
+double? _customerPrice(StoreProduct product) =>
+    CustomerProfile.instance.isCompany ? product.compareAtPrice : product.price;

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'responsive_layout.dart';
+
 const _background = Color(0xFF0A0A0A);
 const _surface = Color(0xFF171717);
 const _raised = Color(0xFF202020);
@@ -108,7 +110,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => ResponsiveScaffold(
     backgroundColor: _background,
     appBar: AppBar(
       backgroundColor: _background,
@@ -193,7 +195,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _metrics() => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 18),
-    child: Row(
+    child: ResponsiveRow(
       children: [
         Expanded(
           child: _metricCard(
@@ -227,7 +229,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _metricCard(String label, String value, IconData icon, Color color) =>
       Container(
-        height: 84,
+        constraints: const BoxConstraints(minHeight: 84),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: _surface,
@@ -307,7 +309,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       (_StockFilter.empty, 'Esgotados'),
     ];
     return SizedBox(
-      height: 38,
+      height: 22 + MediaQuery.textScalerOf(context).scale(18),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         scrollDirection: Axis.horizontal,
@@ -424,7 +426,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 5),
-                Row(
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
                   children: [
                     Text(
                       'SKU ${product.sku}',

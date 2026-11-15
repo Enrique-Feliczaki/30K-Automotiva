@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'responsive_layout.dart';
 
 import 'cart_item.dart';
 import 'customer_profile.dart';
+import 'local_persistence.dart';
+import 'shipping.dart';
 
 const _background = Color(0xFF0A0A0A);
 const _surface = Color(0xFF171717);
@@ -24,14 +29,27 @@ class PaymentScreen extends StatefulWidget {
 class _PaymentScreenState extends State<PaymentScreen> {
   _PaymentMethod _method = _PaymentMethod.pix;
   final _formKey = GlobalKey<FormState>();
-  final _postalCodeController = TextEditingController(text: CustomerProfile.instance.postalCode);
-  final _stateController = TextEditingController(text: CustomerProfile.instance.state);
-  final _cityController = TextEditingController(text: CustomerProfile.instance.city);
-  final _neighborhoodController = TextEditingController(text: CustomerProfile.instance.neighborhood);
-  final _streetController = TextEditingController(text: CustomerProfile.instance.street);
-  final _houseNumberController = TextEditingController(text: CustomerProfile.instance.houseNumber);
+  final _postalCodeController = TextEditingController(
+    text: CustomerProfile.instance.postalCode,
+  );
+  final _stateController = TextEditingController(
+    text: CustomerProfile.instance.state,
+  );
+  final _cityController = TextEditingController(
+    text: CustomerProfile.instance.city,
+  );
+  final _neighborhoodController = TextEditingController(
+    text: CustomerProfile.instance.neighborhood,
+  );
+  final _streetController = TextEditingController(
+    text: CustomerProfile.instance.street,
+  );
+  final _houseNumberController = TextEditingController(
+    text: CustomerProfile.instance.houseNumber,
+  );
 
   double get _subtotal => widget.items.fold(0, (sum, item) => sum + item.total);
+  double get _total => _subtotal + fixedShippingFee;
   int get _units => widget.items.fold(0, (sum, item) => sum + item.quantity);
 
   @override
@@ -47,7 +65,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ResponsiveScaffold(
       backgroundColor: _background,
       appBar: AppBar(
         backgroundColor: _background,
@@ -78,15 +96,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
             _paymentChoice(
               method: _PaymentMethod.pix,
               title: 'Pix',
-              detail: 'Aprovação imediata',
               icon: Icons.qr_code_2,
-              badge: '5% OFF',
             ),
             const SizedBox(height: 9),
             _paymentChoice(
               method: _PaymentMethod.card,
               title: 'Cartão de crédito',
-              detail: 'Parcele em até 3x sem juros',
               icon: Icons.credit_card_outlined,
             ),
             if (_method == _PaymentMethod.card) ...[
@@ -98,7 +113,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             const SizedBox(height: 12),
             _orderSummary(),
             const SizedBox(height: 16),
-            const Row(
+            const ResponsiveRow(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.verified_user_outlined, size: 15, color: _muted),
@@ -116,7 +131,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _checkoutProgress() => Row(
+  Widget _checkoutProgress() => ResponsiveRow(
     children: [
       _step('1', 'Sacola', complete: true),
       Expanded(child: Container(height: 1, color: _accent)),
@@ -172,12 +187,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     children: [
       Icon(icon, size: 17, color: const Color(0xFFFF646D)),
       const SizedBox(width: 7),
-      Text(
-        title,
-        style: const TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1,
+      Expanded(
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1,
+          ),
         ),
       ),
     ],
@@ -202,54 +219,75 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ),
         const SizedBox(height: 5),
         const Text(
-          'Informe seu CEP para calcular a entrega',
+          'Informe seu CEP para a entrega',
           style: TextStyle(fontSize: 11, color: _muted),
         ),
         const SizedBox(height: 12),
-        Row(
+        _inputField(
+          controller: _postalCodeController,
+          label: 'CEP',
+          hint: '00000-000',
+          keyboardType: TextInputType.number,
+          validator: (value) =>
+              value == null ||
+                  value.replaceAll(RegExp(r'\D'), '').length != 8
+              ? 'Informe um CEP válido'
+              : null,
+        ),
+        const SizedBox(height: 10),
+        ResponsiveRow(
           children: [
             Expanded(
               child: _inputField(
-                controller: _postalCodeController,
-                label: 'CEP',
-                hint: '00000-000',
-                keyboardType: TextInputType.number,
-                validator: (value) => value == null || value.replaceAll(RegExp(r'\D'), '').length != 8
-                    ? 'Informe um CEP válido'
-                    : null,
+                controller: _stateController,
+                label: 'Estado',
+                hint: 'SP',
+                validator: _required,
               ),
             ),
             const SizedBox(width: 9),
-            SizedBox(
-              height: 45,
-              child: OutlinedButton(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _silver,
-                  side: const BorderSide(color: Color(0xFF484848)),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(9),
-                  ),
-                ),
-                child: const Text('Calcular', style: TextStyle(fontSize: 11)),
+            Expanded(
+              flex: 2,
+              child: _inputField(
+                controller: _cityController,
+                label: 'Cidade',
+                hint: 'Sua cidade',
+                validator: _required,
               ),
             ),
           ],
         ),
         const SizedBox(height: 10),
-        Row(children: [
-          Expanded(child: _inputField(controller: _stateController, label: 'Estado', hint: 'SP', validator: _required)),
-          const SizedBox(width: 9),
-          Expanded(flex: 2, child: _inputField(controller: _cityController, label: 'Cidade', hint: 'Sua cidade', validator: _required)),
-        ]),
+        _inputField(
+          controller: _neighborhoodController,
+          label: 'Bairro',
+          hint: 'Seu bairro',
+          validator: _required,
+        ),
         const SizedBox(height: 10),
-        _inputField(controller: _neighborhoodController, label: 'Bairro', hint: 'Seu bairro', validator: _required),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(flex: 3, child: _inputField(controller: _streetController, label: 'Rua', hint: 'Nome da rua', validator: _required)),
-          const SizedBox(width: 9),
-          Expanded(child: _inputField(controller: _houseNumberController, label: 'Número', hint: 'Nº', keyboardType: TextInputType.number, validator: _required)),
-        ]),
+        ResponsiveRow(
+          children: [
+            Expanded(
+              flex: 3,
+              child: _inputField(
+                controller: _streetController,
+                label: 'Rua',
+                hint: 'Nome da rua',
+                validator: _required,
+              ),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: _inputField(
+                controller: _houseNumberController,
+                label: 'Número',
+                hint: 'Nº',
+                keyboardType: TextInputType.number,
+                validator: _required,
+              ),
+            ),
+          ],
+        ),
       ],
     ),
   );
@@ -257,9 +295,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _paymentChoice({
     required _PaymentMethod method,
     required String title,
-    required String detail,
     required IconData icon,
-    String? badge,
   }) {
     final selected = _method == method;
     return InkWell(
@@ -284,37 +320,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
             const SizedBox(width: 11),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 7),
-                        Text(
-                          badge,
-                          style: const TextStyle(
-                            color: Color(0xFFFF737B),
-                            fontSize: 9,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    detail,
-                    style: const TextStyle(fontSize: 10, color: _muted),
-                  ),
-                ],
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
             Icon(
@@ -341,21 +352,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
         const SizedBox(height: 10),
         _inputField(
           label: 'Número do cartão',
-          hint: '0000 0000 0000 0000',
+          hint: '0000000000000000',
           keyboardType: TextInputType.number,
-          validator: (value) =>
-              value == null || value.replaceAll(' ', '').length < 13
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(16),
+          ],
+          validator: (value) => !RegExp(r'^[0-9]{16}$').hasMatch(value ?? '')
               ? 'Confira o número do cartão'
               : null,
         ),
         const SizedBox(height: 10),
-        Row(
+        ResponsiveRow(
           children: [
             Expanded(
               child: _inputField(
                 label: 'Validade',
                 hint: 'MM/AA',
-                validator: _required,
+                keyboardType: TextInputType.datetime,
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9/]')),
+                  LengthLimitingTextInputFormatter(5),
+                ],
+                validator: (value) =>
+                    !RegExp(r'^(0[1-9]|1[0-2])/(2[6-9]|3[0-6])$')
+                        .hasMatch(value ?? '')
+                    ? 'Use MM/AA: mês de 01 a 12 e ano de 26 a 36'
+                    : null,
               ),
             ),
             const SizedBox(width: 10),
@@ -364,8 +387,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 label: 'CVV',
                 hint: '123',
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(3),
+                ],
                 validator: (value) =>
-                    value == null || value.length < 3 ? 'Confira o CVV' : null,
+                    !RegExp(r'^[0-9]{3}$').hasMatch(value ?? '')
+                    ? 'Confira o CVV'
+                    : null,
               ),
             ),
           ],
@@ -382,14 +411,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
     required String label,
     required String hint,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) => TextFormField(
     controller: controller,
     keyboardType: keyboardType,
+    inputFormatters: inputFormatters,
     validator: validator,
     style: const TextStyle(fontSize: 12),
     decoration: InputDecoration(
       labelText: label,
+      errorMaxLines: 3,
       hintText: hint,
       labelStyle: const TextStyle(color: _muted, fontSize: 11),
       hintStyle: const TextStyle(color: Color(0xFF6E7277), fontSize: 11),
@@ -425,20 +457,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
           value: formatBrl(_subtotal),
         ),
         const SizedBox(height: 9),
-        const _SummaryRow(label: 'Entrega', value: 'Calcular pelo CEP'),
+        _SummaryRow(label: 'Entrega', value: formatBrl(fixedShippingFee)),
         const SizedBox(height: 12),
         const Divider(height: 1, color: Color(0xFF343434)),
         const SizedBox(height: 12),
-        _SummaryRow(
-          label: 'Total parcial',
-          value: formatBrl(_subtotal),
-          total: true,
-        ),
+        _SummaryRow(label: 'Total', value: formatBrl(_total), total: true),
         const SizedBox(height: 5),
         const Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            'O valor da entrega será informado após o CEP.',
+            'Frete fixo incluído no total.',
             style: TextStyle(fontSize: 9, color: _muted),
           ),
         ),
@@ -475,7 +503,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     ),
   );
 
-  void _submitOrder() {
+  Future<void> _submitOrder() async {
     if (!_formKey.currentState!.validate()) return;
     final profile = CustomerProfile.instance;
     profile
@@ -485,6 +513,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ..neighborhood = _neighborhoodController.text.trim()
       ..street = _streetController.text.trim()
       ..houseNumber = _houseNumberController.text.trim();
+    profile.save();
+    try {
+      await LocalPersistence.active?.flush();
+    } catch (_) {
+      return;
+    }
+    if (!mounted) return;
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -533,7 +568,8 @@ class _SummaryRow extends StatelessWidget {
   final bool total;
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => ResponsiveRow(
+    breakpoint: 340,
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       Text(

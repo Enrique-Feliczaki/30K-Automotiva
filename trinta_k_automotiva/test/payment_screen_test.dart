@@ -21,7 +21,9 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const MaterialApp(home: PaymentScreen(items: [item])));
+    await tester.pumpWidget(
+      const MaterialApp(home: PaymentScreen(items: [item])),
+    );
   }
 
   setUp(() {
@@ -52,13 +54,18 @@ void main() {
       ..houseNumber = address['houseNumber']!;
   });
 
-  testWidgets('QA-100 checkout apresenta resumo e pagamento pix', (tester) async {
+  testWidgets('QA-100 checkout apresenta resumo e pagamento pix', (
+    tester,
+  ) async {
     await open(tester);
     expect(find.text('Finalizar pedido'), findsOneWidget);
     expect(find.text('Pix'), findsOneWidget);
     expect(find.text('Continuar para o Pix'), findsOneWidget);
     expect(find.text('Produtos (2 itens)'), findsOneWidget);
     expect(find.text('R\$ 119,80'), findsWidgets);
+    expect(find.text('R\$ 50,00'), findsOneWidget);
+    expect(find.text('R\$ 169,80'), findsOneWidget);
+    expect(find.text('Total parcial'), findsNothing);
   });
 
   testWidgets('QA-101 checkout apresenta campos de endereco', (tester) async {
@@ -93,7 +100,9 @@ void main() {
     expect(find.text('Campo obrigatório'), findsNWidgets(5));
   });
 
-  testWidgets('QA-105 checkout com CEP incorreto impede confirmacao', (tester) async {
+  testWidgets('QA-105 checkout com CEP incorreto impede confirmacao', (
+    tester,
+  ) async {
     await open(tester);
     await tester.enterText(find.byType(TextFormField).at(0), '123');
     await tester.tap(find.text('Continuar para o Pix'));
@@ -112,9 +121,87 @@ void main() {
     expect(find.text('Confira o CVV'), findsOneWidget);
   });
 
-  testWidgets('QA-107 endereco valido permite confirmar fluxo simulado', (tester) async {
+  testWidgets(
+    'cartao exige comprimentos exatos e validade nos limites pedidos',
+    (tester) async {
+      await open(tester);
+      await tester.tap(find.text('Cartão de crédito'));
+      await tester.pump();
+
+      TextFormField field(String label) => tester.widget<TextFormField>(
+        find.widgetWithText(TextFormField, label),
+      );
+
+      final number = field('Número do cartão').validator!;
+      for (final value in [
+        '',
+        '123456789012345',
+        '12345678901234567',
+        '123456789012345a',
+      ]) {
+        expect(number(value), isNotNull, reason: value);
+      }
+      expect(number('1234567890123456'), isNull);
+
+      final cvv = field('CVV').validator!;
+      for (final value in ['', '12', '1234', '1a3', '   ']) {
+        expect(cvv(value), isNotNull, reason: value);
+      }
+      expect(cvv('012'), isNull);
+
+      final expiry = field('Validade').validator!;
+      for (final value in ['01/26', '12/36', '06/30']) {
+        expect(expiry(value), isNull, reason: value);
+      }
+      for (final value in [
+        '',
+        '00/26',
+        '13/26',
+        '01/25',
+        '12/37',
+        '1/26',
+        '01/2026',
+        '0126',
+        'aa/bb',
+      ]) {
+        expect(expiry(value), isNotNull, reason: value);
+      }
+
+      for (final entry in {
+        'Número do cartão': ['1234567890123456a7', '1234567890123456'],
+        'CVV': ['0a123', '012'],
+        'Validade': ['01/26a7', '01/26'],
+      }.entries) {
+        final finder = find.widgetWithText(TextFormField, entry.key);
+        await tester.enterText(finder, entry.value.first);
+        expect(
+          tester
+              .widget<EditableText>(
+                find.descendant(
+                  of: finder,
+                  matching: find.byType(EditableText),
+                ),
+              )
+              .controller
+              .text,
+          entry.value.last,
+        );
+      }
+    },
+  );
+
+  testWidgets('QA-107 endereco valido permite confirmar fluxo simulado', (
+    tester,
+  ) async {
     await open(tester);
-    const values = ['85010-000', 'PR', 'Guarapuava', 'Centro', 'Rua Teste', '100'];
+    const values = [
+      '85010-000',
+      'PR',
+      'Guarapuava',
+      'Centro',
+      'Rua Teste',
+      '100',
+    ];
     for (var i = 0; i < values.length; i++) {
       await tester.enterText(find.byType(TextFormField).at(i), values[i]);
     }

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import 'responsive_layout.dart';
+
 import 'cart_item.dart';
 import 'cart_store.dart';
 import 'customer_profile.dart';
 import 'payment_screen.dart';
+import 'shipping.dart';
 
 const _background = Color(0xFF0A0A0A);
 const _surface = Color(0xFF171717);
@@ -22,12 +25,13 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   List<CartItem> get _items => CartStore.instance.items;
   double get _subtotal => CartStore.instance.subtotal;
+  double get _total => _subtotal + fixedShippingFee;
   int get _units => CartStore.instance.unitCount;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: CartStore.instance,
-    builder: (context, _) => Scaffold(
+    builder: (context, _) => ResponsiveScaffold(
       backgroundColor: _background,
       appBar: AppBar(
         backgroundColor: _background,
@@ -62,7 +66,7 @@ class _CartScreenState extends State<CartScreen> {
     children: [
       _progress(),
       const SizedBox(height: 19),
-      Row(
+      ResponsiveRow(
         children: [
           const Expanded(
             child: Text(
@@ -92,24 +96,12 @@ class _CartScreenState extends State<CartScreen> {
       ...List.generate(_items.length, _itemCard),
       const SizedBox(height: 17),
       _shippingNotice(),
-      const SizedBox(height: 17),
-      _discountField(),
       const SizedBox(height: 18),
       _summaryCard(),
-      const SizedBox(height: 14),
-      const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.lock_outline, size: 14, color: _muted),
-          SizedBox(width: 6),
-          Text('Compra segura', style: TextStyle(color: _muted, fontSize: 10)),
-        ],
-      ),
-      const SizedBox(height: 12),
     ],
   );
 
-  Widget _progress() => Row(
+  Widget _progress() => ResponsiveRow(
     children: [
       _step('1', 'Sacola', active: true),
       Expanded(child: Container(height: 1, color: const Color(0xFF343434))),
@@ -119,7 +111,12 @@ class _CartScreenState extends State<CartScreen> {
     ],
   );
 
-  Widget _step(String number, String title, {bool active = false}) => Row(
+  Widget _step(
+    String number,
+    String title, {
+    bool active = false,
+  }) => ResponsiveRow(
+    breakpoint: 320,
     mainAxisSize: MainAxisSize.min,
     children: [
       Container(
@@ -253,26 +250,38 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
                 const SizedBox(height: 7),
-                Row(
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    _quantityButton(
-                      Icons.remove,
-                      () => _changeQuantity(index, -1),
-                    ),
-                    SizedBox(
-                      width: 32,
-                      child: Center(
-                        child: Text(
-                          '${item.quantity}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _quantityButton(
+                          Icons.remove,
+                          () => _changeQuantity(index, -1),
+                        ),
+                        SizedBox(
+                          width: 32,
+                          child: Center(
+                            child: Text(
+                              '${item.quantity}',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        _quantityButton(
+                          Icons.add,
+                          CartStore.instance.canIncrease(item)
+                              ? () => _changeQuantity(index, 1)
+                              : null,
+                        ),
+                      ],
                     ),
-                    _quantityButton(Icons.add, () => _changeQuantity(index, 1)),
-                    const Spacer(),
                     Text(
                       formatBrl(item.total),
                       style: const TextStyle(
@@ -283,6 +292,14 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ],
                 ),
+                if (CartStore.instance.stockFor(item) case final int stock)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      'Estoque disponível: $stock unidades',
+                      style: const TextStyle(color: _muted, fontSize: 10),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -291,7 +308,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _quantityButton(IconData icon, VoidCallback onPressed) => SizedBox(
+  Widget _quantityButton(IconData icon, VoidCallback? onPressed) => SizedBox(
     width: 27,
     height: 27,
     child: IconButton.filledTonal(
@@ -321,9 +338,12 @@ class _CartScreenState extends State<CartScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Frete calculado no checkout',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+              Text(
+                'Frete fixo: ${formatBrl(fixedShippingFee)}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 3),
               Text(
@@ -333,69 +353,8 @@ class _CartScreenState extends State<CartScreen> {
             ],
           ),
         ),
-        const Icon(Icons.chevron_right, color: _muted, size: 18),
       ],
     ),
-  );
-
-  Widget _discountField() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'CUPOM DE DESCONTO',
-        style: TextStyle(
-          fontSize: 9,
-          color: _silver,
-          letterSpacing: 1,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      const SizedBox(height: 8),
-      Row(
-        children: [
-          Expanded(
-            child: TextField(
-              textCapitalization: TextCapitalization.characters,
-              style: const TextStyle(fontSize: 12),
-              decoration: InputDecoration(
-                hintText: 'Digite seu cupom',
-                hintStyle: const TextStyle(color: _muted, fontSize: 11),
-                filled: true,
-                fillColor: _surface,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(color: Color(0xFF303030)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(9),
-                  borderSide: const BorderSide(color: _accent),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 9),
-          OutlinedButton(
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Cupom indisponível para validação no momento.'),
-              ),
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _silver,
-              side: const BorderSide(color: Color(0xFF484848)),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(9),
-              ),
-            ),
-            child: const Text('Aplicar', style: TextStyle(fontSize: 11)),
-          ),
-        ],
-      ),
-    ],
   );
 
   Widget _summaryCard() => Container(
@@ -419,19 +378,19 @@ class _CartScreenState extends State<CartScreen> {
         const SizedBox(height: 8),
         _summaryLine(
           'Entrega',
-          'Calculada no checkout',
+          formatBrl(fixedShippingFee),
           valueColor: const Color(0xFFFF737B),
         ),
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 12),
           child: Divider(height: 1, color: Color(0xFF343434)),
         ),
-        _summaryLine('Total', formatBrl(_subtotal), total: true),
+        _summaryLine('Total', formatBrl(_total), total: true),
         const SizedBox(height: 4),
         const Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            'O frete será adicionado na próxima etapa.',
+            'Frete fixo incluído no total.',
             style: TextStyle(fontSize: 9, color: _muted),
           ),
         ),
@@ -444,7 +403,8 @@ class _CartScreenState extends State<CartScreen> {
     String value, {
     bool total = false,
     Color? valueColor,
-  }) => Row(
+  }) => ResponsiveRow(
+    breakpoint: 320,
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
       Text(
@@ -474,7 +434,7 @@ class _CartScreenState extends State<CartScreen> {
         color: Color(0xFF111111),
         border: Border(top: BorderSide(color: Color(0xFF292929))),
       ),
-      child: Row(
+      child: ResponsiveRow(
         children: [
           Expanded(
             child: Column(
@@ -492,7 +452,7 @@ class _CartScreenState extends State<CartScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  formatBrl(_subtotal),
+                  formatBrl(_total),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -522,35 +482,37 @@ class _CartScreenState extends State<CartScreen> {
     ),
   );
 
-  Widget _emptyCart() => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(30),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.shopping_bag_outlined,
-            size: 54,
-            color: Color(0xFF565A5F),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Sua sacola está vazia',
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 7),
-          const Text(
-            'Explore os produtos e encontre o cuidado ideal para seu carro.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: _muted, fontSize: 12, height: 1.5),
-          ),
-          const SizedBox(height: 18),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: FilledButton.styleFrom(backgroundColor: _accent),
-            child: const Text('Voltar para a loja'),
-          ),
-        ],
+  Widget _emptyCart() => SingleChildScrollView(
+    child: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.shopping_bag_outlined,
+              size: 54,
+              color: Color(0xFF565A5F),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Sua sacola está vazia',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 7),
+            const Text(
+              'Explore os produtos e encontre o cuidado ideal para seu carro.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _muted, fontSize: 12, height: 1.5),
+            ),
+            const SizedBox(height: 18),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: FilledButton.styleFrom(backgroundColor: _accent),
+              child: const Text('Voltar para a loja'),
+            ),
+          ],
+        ),
       ),
     ),
   );

@@ -75,7 +75,7 @@ void main() {
   testWidgets('QA-127 cliente ve navegacao sem admin', (tester) async {
     await open(tester);
     expect(find.text('Início'), findsOneWidget);
-    expect(find.text('Favoritos'), findsOneWidget);
+    expect(find.text('Favoritos'), findsNothing);
     expect(find.text('Conta'), findsOneWidget);
     expect(find.text('Admin'), findsNothing);
   });

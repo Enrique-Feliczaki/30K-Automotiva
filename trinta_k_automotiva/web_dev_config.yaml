@@ -1,0 +1,4 @@
+# Keep the same browser storage origin between flutter run sessions.
+server:
+  host: localhost
+  port: 7357

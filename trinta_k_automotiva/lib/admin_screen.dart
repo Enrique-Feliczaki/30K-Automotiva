@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+
+import 'responsive_layout.dart';
+
 import 'package:image_picker/image_picker.dart';
 
 import 'product_inventory_screen.dart';
@@ -19,7 +22,7 @@ class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => ResponsiveScaffold(
     backgroundColor: _background,
     appBar: AppBar(
       backgroundColor: _background,
@@ -124,7 +127,7 @@ class AdminScreen extends StatelessWidget {
     ],
   );
 
-  Widget _summary(ProductStore store) => Row(
+  Widget _summary(ProductStore store) => ResponsiveRow(
     children: [
       Expanded(
         child: _metric(
@@ -157,7 +160,7 @@ class AdminScreen extends StatelessWidget {
 
   Widget _metric(String title, String value, IconData icon, Color color) =>
       Container(
-        height: 78,
+        constraints: const BoxConstraints(minHeight: 78),
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
           color: _surface,
@@ -288,7 +291,9 @@ class AdminScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Row(
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
                   children: [
                     Text(
                       formatCurrency(product.price),
@@ -468,9 +473,8 @@ class _ProductEditorState extends State<_ProductEditor> {
     final product = widget.product;
     _name = TextEditingController(text: product?.name ?? '');
     final currentCategory = product?.category;
-    _selectedCategory = ProductStore.selectableCategories.contains(
-      currentCategory,
-    )
+    _selectedCategory =
+        ProductStore.selectableCategories.contains(currentCategory)
         ? currentCategory
         : (currentCategory == null || currentCategory.isEmpty
               ? ProductStore.selectableCategories.first
@@ -529,7 +533,7 @@ class _ProductEditorState extends State<_ProductEditor> {
               ),
             ),
             const SizedBox(height: 8),
-            Row(
+            ResponsiveRow(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton.icon(
@@ -560,7 +564,7 @@ class _ProductEditorState extends State<_ProductEditor> {
             ),
             _field(_name, 'Nome do produto', required: true),
             const SizedBox(height: 10),
-            Row(
+            ResponsiveRow(
               children: [
                 Expanded(child: _categoryDropdown()),
                 const SizedBox(width: 9),
@@ -568,7 +572,7 @@ class _ProductEditorState extends State<_ProductEditor> {
               ],
             ),
             const SizedBox(height: 10),
-            Row(
+            ResponsiveRow(
               children: [
                 Expanded(
                   child: _field(
@@ -592,7 +596,7 @@ class _ProductEditorState extends State<_ProductEditor> {
               ],
             ),
             const SizedBox(height: 10),
-            Row(
+            ResponsiveRow(
               children: [
                 Expanded(
                   child: _field(
@@ -616,7 +620,7 @@ class _ProductEditorState extends State<_ProductEditor> {
               ],
             ),
             const SizedBox(height: 17),
-            Row(
+            ResponsiveRow(
               children: [
                 Expanded(
                   child: OutlinedButton(
@@ -673,6 +677,7 @@ class _ProductEditorState extends State<_ProductEditor> {
     },
     decoration: InputDecoration(
       labelText: label,
+      errorMaxLines: 3,
       labelStyle: const TextStyle(color: _muted, fontSize: 11),
       filled: true,
       fillColor: const Color(0xFF111111),
@@ -715,7 +720,10 @@ class _ProductEditorState extends State<_ProductEditor> {
         labelStyle: const TextStyle(color: _muted, fontSize: 11),
         filled: true,
         fillColor: const Color(0xFF111111),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 11, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 11,
+          vertical: 12,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(9),
           borderSide: const BorderSide(color: Color(0xFF343434)),
@@ -726,15 +734,16 @@ class _ProductEditorState extends State<_ProductEditor> {
         ),
       ),
       items: categories
-          .map((category) => DropdownMenuItem(
-                value: category,
-                child: Text(category, overflow: TextOverflow.ellipsis),
-              ))
+          .map(
+            (category) => DropdownMenuItem(
+              value: category,
+              child: Text(category, overflow: TextOverflow.ellipsis),
+            ),
+          )
           .toList(),
       onChanged: (category) => setState(() => _selectedCategory = category),
-      validator: (value) => value == null || value.isEmpty
-          ? 'Selecione uma categoria'
-          : null,
+      validator: (value) =>
+          value == null || value.isEmpty ? 'Selecione uma categoria' : null,
     );
   }
 

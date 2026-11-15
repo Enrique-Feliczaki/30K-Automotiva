@@ -7,6 +7,7 @@ class CartItem {
     required this.price,
     required this.quantity,
     required this.icon,
+    this.productId,
   });
 
   final String name;
@@ -14,6 +15,7 @@ class CartItem {
   final double price;
   final int quantity;
   final IconData icon;
+  final String? productId;
 
   double get total => price * quantity;
 
@@ -23,6 +25,7 @@ class CartItem {
     price: price,
     quantity: quantity ?? this.quantity,
     icon: icon,
+    productId: productId,
   );
 }
 
