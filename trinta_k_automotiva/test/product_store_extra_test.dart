@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trinta_k_automotiva/local_records.dart';
 import 'package:trinta_k_automotiva/product_store.dart';
 
 void main() {
@@ -17,6 +18,7 @@ void main() {
     stock: 5,
     minimumStock: 2,
     icon: Icons.inventory_2_outlined,
+    description: 'Descrição do produto QA.',
     compareAtPrice: 50,
   );
 
@@ -46,6 +48,7 @@ void main() {
     expect(updated.stock, 8);
     expect(updated.id, sample.id);
     expect(updated.sku, sample.sku);
+    expect(updated.description, sample.description);
     expect(updated.compareAtPrice, 50);
     expect(sample.price, 37.5);
   });
@@ -104,5 +107,10 @@ void main() {
   test('QA-65 inclui Outros nas categorias selecionaveis', () {
     expect(ProductStore.selectableCategories, contains('Outros'));
     expect(ProductStore.homeCategories, isNot(contains('Outros')));
+  });
+
+  test('registro antigo sem descricao continua sendo carregado', () {
+    final record = productRecord(sample)..remove('description');
+    expect(productFromRecord(record).description, isEmpty);
   });
 }

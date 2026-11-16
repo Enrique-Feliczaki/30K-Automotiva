@@ -100,8 +100,9 @@ void main() {
         matching: find.byType(Scrollable),
       ).first,
     );
-    await tester.tap(find.text('Cancelar'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancelar').hitTestable());
+    await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsNothing);
     expect(store.products.length, initial);
   });

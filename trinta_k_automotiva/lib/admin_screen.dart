@@ -458,6 +458,7 @@ class _ProductEditor extends StatefulWidget {
 class _ProductEditorState extends State<_ProductEditor> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
+  late final TextEditingController _description;
   String? _selectedCategory;
   late final TextEditingController _sku;
   late final TextEditingController _price;
@@ -473,6 +474,7 @@ class _ProductEditorState extends State<_ProductEditor> {
     super.initState();
     final product = widget.product;
     _name = TextEditingController(text: product?.name ?? '');
+    _description = TextEditingController(text: product?.description ?? '');
     final currentCategory = product?.category;
     _selectedCategory =
         ProductStore.selectableCategories.contains(currentCategory)
@@ -497,6 +499,7 @@ class _ProductEditorState extends State<_ProductEditor> {
   @override
   void dispose() {
     _name.dispose();
+    _description.dispose();
     _sku.dispose();
     _price.dispose();
     _comparePrice.dispose();
@@ -564,6 +567,14 @@ class _ProductEditorState extends State<_ProductEditor> {
               ],
             ),
             _field(_name, 'Nome do produto', required: true),
+            const SizedBox(height: 10),
+            _field(
+              _description,
+              'Descrição',
+              required: true,
+              maxLines: 4,
+              maxLength: 500,
+            ),
             const SizedBox(height: 10),
             ResponsiveRow(
               children: [
@@ -659,6 +670,8 @@ class _ProductEditorState extends State<_ProductEditor> {
     bool positive = false,
     bool whole = false,
     bool sku = false,
+    int maxLines = 1,
+    int? maxLength,
   }) => TextFormField(
     controller: controller,
     inputFormatters: sku
@@ -672,12 +685,18 @@ class _ProductEditorState extends State<_ProductEditor> {
             ),
             LengthLimitingTextInputFormatter(10),
           ]
-        : null,
+        : maxLength == null
+        ? null
+        : [LengthLimitingTextInputFormatter(maxLength)],
     keyboardType: sku
         ? TextInputType.text
+        : maxLines > 1
+        ? TextInputType.multiline
         : number
         ? const TextInputType.numberWithOptions(decimal: true)
         : TextInputType.text,
+    maxLines: maxLines,
+    maxLength: maxLength,
     style: const TextStyle(fontSize: 12),
     validator: (value) {
       if (required && (value == null || value.trim().isEmpty))
@@ -815,6 +834,7 @@ class _ProductEditorState extends State<_ProductEditor> {
       StoreProduct(
         id: original?.id ?? '',
         name: _name.text.trim(),
+        description: _description.text.trim(),
         category: _selectedCategory!,
         sku: _sku.text.trim().toUpperCase(),
         price: price,

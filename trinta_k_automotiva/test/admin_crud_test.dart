@@ -57,6 +57,11 @@ void main() {
     await tester.tap(find.text('Novo produto').last);
     await tester.pumpAndSettle();
     await type(tester, 'Nome do produto', 'Produto UI QA');
+    await type(
+      tester,
+      'Descrição',
+      'Produto criado para validar a descrição no painel.',
+    );
     await type(tester, 'Código / SKU', '30k-qa-136');
     await type(tester, 'Preço no varejo (R\$)', '48,50');
     await type(tester, 'Preço no atacado (R\$)', '45,00');
@@ -64,6 +69,10 @@ void main() {
     expect(store.products.length, before + 1);
     final product = store.products.firstWhere((p) => p.name == 'Produto UI QA');
     expect(product.sku, '30K-QA-136');
+    expect(
+      product.description,
+      'Produto criado para validar a descrição no painel.',
+    );
     expect(product.price, 48.5);
   });
 
@@ -144,5 +153,25 @@ void main() {
 
     final updated = store.products.firstWhere((p) => p.id == first.id);
     expect(updated.sku, '30K-XY-999');
+  });
+
+  testWidgets('edicao permite alterar a descricao do produto', (
+    tester,
+  ) async {
+    final first = store.products.first;
+    await open(tester);
+    await openMenu(tester);
+    await tester.tap(find.text('Editar').last);
+    await tester.pumpAndSettle();
+
+    await type(
+      tester,
+      'Descrição',
+      'Nova descrição detalhada do produto.',
+    );
+    await save(tester);
+
+    final updated = store.products.firstWhere((p) => p.id == first.id);
+    expect(updated.description, 'Nova descrição detalhada do produto.');
   });
 }

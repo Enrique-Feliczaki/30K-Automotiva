@@ -14,6 +14,7 @@ class StoreProduct {
     required this.stock,
     required this.minimumStock,
     required this.icon,
+    this.description = '',
     this.compareAtPrice,
     this.imageBytes,
   });
@@ -26,6 +27,7 @@ class StoreProduct {
   final int stock;
   final int minimumStock;
   final IconData icon;
+  final String description;
   final double? compareAtPrice;
   final Uint8List? imageBytes;
 
@@ -41,6 +43,7 @@ class StoreProduct {
     int? stock,
     int? minimumStock,
     IconData? icon,
+    String? description,
     double? compareAtPrice,
     Uint8List? imageBytes,
     bool clearImage = false,
@@ -53,6 +56,7 @@ class StoreProduct {
     stock: stock ?? this.stock,
     minimumStock: minimumStock ?? this.minimumStock,
     icon: icon ?? this.icon,
+    description: description ?? this.description,
     compareAtPrice: compareAtPrice ?? this.compareAtPrice,
     imageBytes: clearImage ? null : imageBytes ?? this.imageBytes,
   );
@@ -91,6 +95,8 @@ class ProductStore extends ChangeNotifier {
       stock: 24,
       minimumStock: 5,
       icon: Icons.local_drink_outlined,
+      description:
+          'Shampoo automotivo concentrado para uma limpeza eficiente e segura, preservando o brilho da pintura.',
     ),
     const StoreProduct(
       id: 'cera-liquida',
@@ -102,6 +108,8 @@ class ProductStore extends ChangeNotifier {
       stock: 4,
       minimumStock: 5,
       icon: Icons.auto_awesome,
+      description:
+          'Cera líquida de aplicação prática que realça o brilho e ajuda a proteger a pintura do veículo.',
     ),
     const StoreProduct(
       id: 'revitalizador-pneus',
@@ -113,6 +121,8 @@ class ProductStore extends ChangeNotifier {
       stock: 12,
       minimumStock: 5,
       icon: Icons.tire_repair,
+      description:
+          'Revitalizador desenvolvido para renovar a aparência dos pneus e proporcionar acabamento uniforme.',
     ),
     const StoreProduct(
       id: 'graphene-armor',
@@ -123,6 +133,8 @@ class ProductStore extends ChangeNotifier {
       stock: 8,
       minimumStock: 3,
       icon: Icons.shield_outlined,
+      description:
+          'Proteção avançada com grafeno para aumentar a resistência, o brilho e a durabilidade da superfície.',
     ),
     const StoreProduct(
       id: 'ultra-plush',
@@ -133,6 +145,8 @@ class ProductStore extends ChangeNotifier {
       stock: 0,
       minimumStock: 5,
       icon: Icons.layers_outlined,
+      description:
+          'Toalha de microfibra macia e de alta gramatura, ideal para acabamento e remoção de produtos.',
     ),
   ];
 

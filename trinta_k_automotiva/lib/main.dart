@@ -1473,6 +1473,25 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       height: 1.2,
                     ),
                   ),
+                  if (product.description.trim().isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Descrição',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      product.description,
+                      style: const TextStyle(
+                        color: _silver,
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   if (_customerPrice(product) != null)
                     Text(

@@ -169,6 +169,15 @@ void main() {
     },
   );
 
+  testWidgets('descricao aparece ao abrir os detalhes do produto', (
+    tester,
+  ) async {
+    expect(product.description, isNotEmpty);
+    await openDetails(tester);
+    expect(find.text('Descrição'), findsOneWidget);
+    expect(find.text(product.description), findsOneWidget);
+  });
+
   testWidgets(
     'selecao desconta unidades ja adicionadas e acompanha o estoque',
     (tester) async {

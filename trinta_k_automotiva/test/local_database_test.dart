@@ -155,6 +155,7 @@ void main() {
       expect(await database!.load(), isNull);
       final account = fixture('cliente@example.com', '52998224725');
       final product = originalProducts.first.copyWith(
+        description: 'Descrição persistida do produto.',
         imageBytes: Uint8List.fromList([1, 2, 3, 255]),
       );
       final entry = CartItem(
@@ -186,6 +187,10 @@ void main() {
       expect(loaded.products.single.imageBytes, [1, 2, 3, 255]);
       expect(loaded.products.single.icon, product.icon);
       expect(loaded.products.single.stock, product.stock);
+      expect(
+        loaded.products.single.description,
+        'Descrição persistida do produto.',
+      );
       expect(loaded.accounts.single.profile['street'], 'Rua São José');
       expect(loaded.accounts.single.passwordHash, 'test-hash');
       expect(loaded.carts[account.email]!.single.quantity, 2);
