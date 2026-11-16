@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'responsive_layout.dart';
 
+import 'address_validation.dart';
 import 'cart_item.dart';
 import 'cart_store.dart';
 import 'product_store.dart';
@@ -233,10 +234,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           label: 'CEP',
           hint: '00000-000',
           keyboardType: TextInputType.number,
-          validator: (value) =>
-              value == null || value.replaceAll(RegExp(r'\D'), '').length != 8
-              ? 'Informe um CEP válido'
-              : null,
+          validator: validatePostalCode,
         ),
         const SizedBox(height: 10),
         ResponsiveRow(
@@ -246,7 +244,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 controller: _stateController,
                 label: 'Estado',
                 hint: 'SP',
-                validator: _required,
+                validator: validateState,
               ),
             ),
             const SizedBox(width: 9),
@@ -256,7 +254,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 controller: _cityController,
                 label: 'Cidade',
                 hint: 'Sua cidade',
-                validator: _required,
+                validator: validateAddressText,
               ),
             ),
           ],
@@ -266,7 +264,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           controller: _neighborhoodController,
           label: 'Bairro',
           hint: 'Seu bairro',
-          validator: _required,
+          validator: validateAddressText,
         ),
         const SizedBox(height: 10),
         ResponsiveRow(
@@ -277,7 +275,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 controller: _streetController,
                 label: 'Rua',
                 hint: 'Nome da rua',
-                validator: _required,
+                validator: validateAddressText,
               ),
             ),
             const SizedBox(width: 9),
@@ -287,7 +285,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 label: 'Número',
                 hint: 'Nº',
                 keyboardType: TextInputType.number,
-                validator: _required,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(maximumHouseNumberLength),
+                ],
+                validator: validateHouseNumber,
               ),
             ),
           ],

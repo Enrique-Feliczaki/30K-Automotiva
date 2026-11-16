@@ -140,7 +140,8 @@ class ProductStore extends ChangeNotifier {
 
   bool hasSku(String sku, {String? excludingProductId}) => _products.any(
     (product) =>
-        product.id != excludingProductId && product.sku.trim() == sku.trim(),
+        product.id != excludingProductId &&
+        product.sku.trim().toUpperCase() == sku.trim().toUpperCase(),
   );
 
   List<StoreProduct> stockAfterPurchase(Iterable<CartItem> items) {

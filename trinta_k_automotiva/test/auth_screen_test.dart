@@ -121,6 +121,20 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(1), 'email-invalido');
     await submit(tester, 'Criar cadastro');
     expect(find.text('Informe um e-mail válido'), findsOneWidget);
+
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      'cliente@exemplo.co',
+    );
+    await submit(tester, 'Criar cadastro');
+    expect(find.text('Informe um e-mail válido'), findsOneWidget);
+
+    await tester.enterText(
+      find.byType(TextFormField).at(1),
+      'cliente@exemplo.come',
+    );
+    await submit(tester, 'Criar cadastro');
+    expect(find.text('Informe um e-mail válido'), findsOneWidget);
   });
 
   testWidgets('QA-81 cadastro rejeita CPF invalido', (tester) async {

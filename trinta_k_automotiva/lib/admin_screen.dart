@@ -663,12 +663,18 @@ class _ProductEditorState extends State<_ProductEditor> {
     controller: controller,
     inputFormatters: sku
         ? [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(4),
+            FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9-]')),
+            TextInputFormatter.withFunction(
+              (oldValue, newValue) => newValue.copyWith(
+                text: newValue.text.toUpperCase(),
+                selection: newValue.selection,
+              ),
+            ),
+            LengthLimitingTextInputFormatter(10),
           ]
         : null,
     keyboardType: sku
-        ? TextInputType.number
+        ? TextInputType.text
         : number
         ? const TextInputType.numberWithOptions(decimal: true)
         : TextInputType.text,
@@ -679,8 +685,8 @@ class _ProductEditorState extends State<_ProductEditor> {
       if (sku) {
         final code = value?.trim() ?? '';
         if (code != widget.product?.sku &&
-            !RegExp(r'^[0-9]{1,4}$').hasMatch(code)) {
-          return 'Informe um SKU com até 4 dígitos numéricos';
+            !RegExp(r'^30K-[A-Z0-9]{2}-[0-9]{3}$').hasMatch(code)) {
+          return 'Use o formato 30K-XX-000';
         }
         if (ProductStore.instance.hasSku(
           code,
@@ -810,7 +816,7 @@ class _ProductEditorState extends State<_ProductEditor> {
         id: original?.id ?? '',
         name: _name.text.trim(),
         category: _selectedCategory!,
-        sku: _sku.text.trim(),
+        sku: _sku.text.trim().toUpperCase(),
         price: price,
         stock: stock < 0 ? 0 : stock,
         minimumStock: minimumStock < 0 ? 0 : minimumStock,

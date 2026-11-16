@@ -5,6 +5,7 @@ import 'responsive_layout.dart';
 
 import 'customer_profile.dart';
 import 'document_input_formatter.dart';
+import 'email_validation.dart';
 import 'local_accounts.dart';
 import 'local_persistence.dart';
 
@@ -309,10 +310,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 return email.isEmpty
                                     ? 'Informe seu e-mail'
                                     : null;
-                              return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
-                                      .hasMatch(email)
-                                  ? null
-                                  : 'Informe um e-mail válido';
+                              return validateRegistrationEmail(email);
                             },
                           ),
                         if (_isRegister) ...[

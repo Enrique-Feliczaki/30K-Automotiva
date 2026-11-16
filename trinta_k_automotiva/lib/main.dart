@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'responsive_layout.dart';
 
@@ -7,6 +8,7 @@ import 'cart_item.dart';
 import 'cart_screen.dart';
 import 'cart_store.dart';
 import 'admin_screen.dart';
+import 'address_validation.dart';
 import 'product_store.dart';
 import 'customer_profile.dart';
 import 'local_database.dart';
@@ -179,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
   int _category = 0;
   final _searchController = TextEditingController();
+  final _productsSectionKey = GlobalKey();
   final _homeCategories = ProductStore.homeCategories;
   List<String> get _categories => ['Todos', ..._homeCategories];
 
@@ -232,7 +235,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_searchController.text.trim().isEmpty)
                     SliverToBoxAdapter(child: _hero()),
                   SliverToBoxAdapter(child: _categoriesSection()),
-                  SliverToBoxAdapter(child: _offersSection()),
+                  SliverToBoxAdapter(
+                    child: KeyedSubtree(
+                      key: _productsSectionKey,
+                      child: _offersSection(),
+                    ),
+                  ),
                   const SliverToBoxAdapter(child: SizedBox(height: 28)),
                 ],
               ),
@@ -392,31 +400,51 @@ class _HomeScreenState extends State<HomeScreen> {
     final neighborhood = TextEditingController(text: profile.neighborhood);
     final street = TextEditingController(text: profile.street);
     final houseNumber = TextEditingController(text: profile.houseNumber);
-    String? requiredValue(String? value) =>
-        value == null || value.trim().isEmpty ? 'Campo obrigatório' : null;
     InputDecoration decoration(String label, String hint) => InputDecoration(
       labelText: label,
       errorMaxLines: 3,
       hintText: hint,
+      labelStyle: const TextStyle(color: _muted),
+      hintStyle: const TextStyle(color: _muted),
       filled: true,
       fillColor: const Color(0xFF111111),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(9)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(9),
+        borderSide: const BorderSide(color: Color(0xFF343434)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(9),
+        borderSide: const BorderSide(color: _red),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(9),
+        borderSide: const BorderSide(color: Color(0xFFFF6470)),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(9),
+        borderSide: const BorderSide(color: Color(0xFFFF6470)),
+      ),
     );
     Widget field(
       TextEditingController controller,
       String label,
       String hint, {
       TextInputType? keyboardType,
+      List<TextInputFormatter>? inputFormatters,
       String? Function(String?)? validator,
     }) => TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      validator: validator ?? requiredValue,
+      inputFormatters: inputFormatters,
+      validator: validator ?? validateAddressText,
       decoration: decoration(label, hint),
     );
 
-    final saved = await showDialog<bool>(
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final dialogRoute = DialogRoute<bool>(
       context: context,
+      themes: InheritedTheme.capture(from: context, to: navigator.context),
+      barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       builder: (dialogContext) => AlertDialog(
         scrollable: true,
         backgroundColor: _panel2,
@@ -436,14 +464,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'CEP',
                     '00000-000',
                     keyboardType: TextInputType.number,
-                    validator: (value) =>
-                        value == null ||
-                            value.replaceAll(RegExp(r'\D'), '').length != 8
-                        ? 'Informe um CEP válido'
-                        : null,
+                    validator: validatePostalCode,
                   ),
                   const SizedBox(height: 10),
-                  field(state, 'Estado', 'SP'),
+                  field(state, 'Estado', 'SP', validator: validateState),
                   const SizedBox(height: 10),
                   field(city, 'Cidade', 'Sua cidade'),
                   const SizedBox(height: 10),
@@ -456,6 +480,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Número',
                     'Nº',
                     keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(
+                        maximumHouseNumberLength,
+                      ),
+                    ],
+                    validator: validateHouseNumber,
                   ),
                 ],
               ),
@@ -477,6 +508,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+    final saved = await navigator.push(dialogRoute);
+
+    // Navigator.pop completes before the closing animation removes the dialog
+    // from the tree. Keep its controllers alive until that removal finishes.
+    await dialogRoute.completed;
 
     if (saved == true && mounted) {
       profile
@@ -728,7 +764,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  onPressed: () => setState(() => _tab = 0),
+                  onPressed: _exploreProducts,
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -754,12 +790,26 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   );
 
+  void _exploreProducts() {
+    setState(() => _category = 0);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final productsContext = _productsSectionKey.currentContext;
+      if (productsContext == null) return;
+      Scrollable.ensureVisible(
+        productsContext,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOut,
+        alignment: 0,
+      );
+    });
+  }
+
   Widget _categoriesSection() => Padding(
     padding: const EdgeInsets.only(top: 25),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('COMPRE POR CATEGORIA', 'Ver todas'),
+        _sectionTitle('COMPRE POR CATEGORIA'),
         const SizedBox(height: 13),
         SizedBox(
           height: 70 + MediaQuery.textScalerOf(context).scale(21),
@@ -826,43 +876,17 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   );
 
-  Widget _sectionTitle(String title, String action) => Padding(
+  Widget _sectionTitle(String title) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 18),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.15,
-            ),
-          ),
-        ),
-        if (CustomerProfile.instance.isCompany)
-          GestureDetector(
-            onTap: _openAdmin,
-            child: const Row(
-              children: [
-                Text(
-                  'Gerenciar',
-                  style: TextStyle(fontSize: 10, color: _silver),
-                ),
-                SizedBox(width: 3),
-                Icon(Icons.chevron_right, size: 15, color: _silver),
-              ],
-            ),
-          ),
-      ],
+    child: Text(
+      title,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.15,
+      ),
     ),
   );
-
-  void _openAdmin() {
-    if (!CustomerProfile.instance.isCompany) return;
-    Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => const AdminScreen()));
-  }
 
   Widget _offersSection() => ListenableBuilder(
     listenable: ProductStore.instance,

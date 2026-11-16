@@ -21,9 +21,15 @@ void main() {
   final navigationObserver = _NavigationObserver();
   final profile = CustomerProfile.instance;
   late Map<String, String> saved;
+  late bool savedIsCompany;
 
-  Future<void> open(WidgetTester tester, {bool admin = false, VoidCallback? logout}) async {
-    tester.view.physicalSize = const Size(1100, 1800);
+  Future<void> open(
+    WidgetTester tester, {
+    bool admin = false,
+    VoidCallback? logout,
+    Size size = const Size(1100, 1800),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -36,6 +42,7 @@ void main() {
   }
 
   setUp(() {
+    savedIsCompany = profile.isCompany;
     saved = {
       'name': profile.name,
       'document': profile.document,
@@ -51,6 +58,7 @@ void main() {
       ..name = ''
       ..document = ''
       ..email = ''
+      ..isCompany = false
       ..postalCode = ''
       ..state = ''
       ..city = ''
@@ -64,6 +72,7 @@ void main() {
       ..name = saved['name']!
       ..document = saved['document']!
       ..email = saved['email']!
+      ..isCompany = savedIsCompany
       ..postalCode = saved['postalCode']!
       ..state = saved['state']!
       ..city = saved['city']!
@@ -83,6 +92,17 @@ void main() {
   testWidgets('QA-128 administrador ve acesso a gestao', (tester) async {
     await open(tester, admin: true);
     expect(find.text('Admin'), findsOneWidget);
+  });
+
+  testWidgets('conta PJ nao recebe nenhuma funcionalidade administrativa', (
+    tester,
+  ) async {
+    profile.isCompany = true;
+    await open(tester);
+
+    expect(find.text('Admin'), findsNothing);
+    expect(find.text('Gerenciar'), findsNothing);
+    expect(find.byType(AdminScreen), findsNothing);
   });
 
   testWidgets('QA-129 cliente acessa sacola pelo cabecalho', (tester) async {
@@ -159,5 +179,87 @@ void main() {
     await tester.pump();
     expect(find.byType(AlertDialog), findsNothing);
     expect(profile.address, isEmpty);
+  });
+
+  testWidgets('campos de endereco usam o mesmo estilo e limitam o numero', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.tap(find.text('Conta'));
+    await tester.pump();
+    await tester.tap(find.text('Cadastrar endereço'));
+    await tester.pumpAndSettle();
+
+    TextFormField field(String label) => tester.widget<TextFormField>(
+      find.widgetWithText(TextFormField, label),
+    );
+    InputDecoration decoration(String label) => tester
+        .widget<TextField>(
+          find.descendant(
+            of: find.widgetWithText(TextFormField, label),
+            matching: find.byType(TextField),
+          ),
+        )
+        .decoration!;
+
+    final cityDecoration = decoration('Cidade');
+    final neighborhoodDecoration = decoration('Bairro');
+    expect(cityDecoration.fillColor, neighborhoodDecoration.fillColor);
+    expect(cityDecoration.enabledBorder, neighborhoodDecoration.enabledBorder);
+    expect(cityDecoration.errorBorder, neighborhoodDecoration.errorBorder);
+
+    final numberFinder = find.widgetWithText(TextFormField, 'Número');
+    await tester.enterText(numberFinder, '123456789012345');
+    expect(field('Número').controller!.text, '123456');
+  });
+
+  testWidgets('cancelar alteracao de endereco repetidamente nao gera erro', (
+    tester,
+  ) async {
+    profile
+      ..postalCode = '85010-000'
+      ..state = 'PR'
+      ..city = 'Guarapuava'
+      ..neighborhood = 'Centro'
+      ..street = 'Rua Teste'
+      ..houseNumber = '100';
+    await open(tester);
+    await tester.tap(find.text('Conta'));
+    await tester.pump();
+
+    for (var attempt = 0; attempt < 5; attempt++) {
+      await tester.tap(find.text('Alterar endereço'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextFormField, 'Cidade'));
+      await tester.pump();
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull, reason: 'tentativa $attempt');
+      expect(find.byType(AlertDialog), findsNothing);
+    }
+  });
+
+  testWidgets('botao explorar produtos rola ate os produtos disponiveis', (
+    tester,
+  ) async {
+    await open(tester, size: const Size(390, 700));
+
+    await tester.tap(find.text('Explorar produtos'));
+    await tester.pumpAndSettle();
+
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(
+        of: find.byType(CustomScrollView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(scrollable.position.pixels, greaterThan(0));
+    expect(find.text('PRODUTOS'), findsOneWidget);
+    expect(tester.getTopLeft(find.text('PRODUTOS')).dy, greaterThanOrEqualTo(0));
+    expect(
+      tester.getBottomRight(find.text('PRODUTOS')).dy,
+      lessThanOrEqualTo(700),
+    );
   });
 }
