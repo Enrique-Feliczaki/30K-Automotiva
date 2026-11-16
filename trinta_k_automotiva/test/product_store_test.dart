@@ -30,6 +30,29 @@ void main() {
     icon: Icons.local_drink,
   );
 
+  test('rejeita cadastro com SKU existente sem alterar o catálogo', () {
+    loja.add(base.copyWith(sku: '0123'));
+    final before = loja.products;
+    expect(
+      () => loja.add(base.copyWith(id: 'outro-produto', sku: '0123')),
+      throwsStateError,
+    );
+    expect(loja.products, orderedEquals(before));
+  });
+
+  test('edição mantém o próprio SKU e rejeita o de outro produto', () {
+    loja.add(base.copyWith(sku: '0123'));
+    final other = base.copyWith(id: 'outro-produto', sku: '4567');
+    loja.add(other);
+    loja.update(base.copyWith(sku: '0123', price: 45));
+    expect(loja.products.firstWhere((p) => p.id == base.id).price, 45);
+    expect(
+      () => loja.update(other.copyWith(sku: '0123')),
+      throwsStateError,
+    );
+    expect(loja.products.firstWhere((p) => p.id == other.id).sku, '4567');
+  });
+
   test('QA-15 identifica estoque esgotado', () {
     expect(base.copyWith(stock: 0).isEmpty, isTrue);
     expect(base.isEmpty, isFalse);

@@ -73,10 +73,9 @@ class LocalPersistence extends ChangeNotifier {
 
   void _save() {
     if (_restoring || !_connected) return;
-    final snapshot = _snapshot();
     _pending = _pending.then((_) async {
       try {
-        await database.save(snapshot);
+        await database.save(_snapshot());
         lastError = null;
       } catch (error) {
         lastError = error;
@@ -90,6 +89,43 @@ class LocalPersistence extends ChangeNotifier {
     if (lastError != null) {
       throw StateError('Não foi possível salvar os dados no aparelho.');
     }
+  }
+
+  Future<void> completePurchase(List<CartItem> items) {
+    final purchase = _pending.then((_) async {
+      final products = _products.stockAfterPurchase(items);
+      final snapshot = _snapshot();
+      final carts = {...snapshot.carts};
+      final customerEmail = _customerEmail;
+      if (customerEmail != null) carts[customerEmail] = [];
+      // Commit stock and the customer's cleared cart in one SQL transaction.
+      // Publish to the screens only after the database confirms the write.
+      await database.save(
+        LocalSnapshot(
+          products: products,
+          accounts: snapshot.accounts,
+          carts: carts,
+        ),
+      );
+      _restoring = true;
+      try {
+        _products.restore(products);
+        _cart.restore([]);
+        _carts
+          ..clear()
+          ..addAll(carts);
+      } finally {
+        _restoring = false;
+      }
+      lastError = null;
+      notifyListeners();
+    });
+    // Keep the queue usable after a failed purchase; the caller handles errors.
+    _pending = purchase.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stack) {},
+    );
+    return purchase;
   }
 
   Future<void> retry() async {

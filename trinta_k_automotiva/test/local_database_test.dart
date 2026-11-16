@@ -69,6 +69,84 @@ void main() {
     await directory.delete(recursive: true);
   });
 
+  Future<CartItem> preparePurchase({LocalDatabase? target}) async {
+    database =
+        target ??
+        LocalDatabase(
+          NativeDatabase(File('${directory.path}/purchase.sqlite')),
+        );
+    final product = originalProducts.first.copyWith(stock: 7);
+    final account = fixture('compra@example.com', '52998224725');
+    await database!.save(
+      LocalSnapshot(products: [product], accounts: [account], carts: {}),
+    );
+    persistence = LocalPersistence(database!);
+    await persistence!.initialize();
+    persistence!.switchCustomer(account.email);
+    final item = CartItem(
+      productId: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price,
+      quantity: 5,
+      icon: product.icon,
+    );
+    CartStore.instance.add(item);
+    await persistence!.flush();
+    return item;
+  }
+
+  test(
+    'compra de cinco unidades deixa duas no banco e limpa o carrinho',
+    () async {
+      final item = await preparePurchase();
+      await persistence!.completePurchase([item]);
+      expect(ProductStore.instance.products.single.stock, 2);
+      expect(CartStore.instance.items, isEmpty);
+      await persistence!.close();
+      persistence = null;
+      database = LocalDatabase(
+        NativeDatabase(File('${directory.path}/purchase.sqlite')),
+      );
+      final snapshot = (await database!.load())!;
+      expect(snapshot.products.single.stock, 2);
+      expect(snapshot.carts['compra@example.com'], isEmpty);
+    },
+  );
+
+  test('estoque insuficiente rejeita a compra sem desconto parcial', () async {
+    final item = await preparePurchase();
+    await expectLater(
+      persistence!.completePurchase([item, item]),
+      throwsStateError,
+    );
+    expect(ProductStore.instance.products.single.stock, 7);
+    expect(CartStore.instance.unitCount, 5);
+    expect((await database!.load())!.products.single.stock, 7);
+  });
+
+  test(
+    'falha no banco preserva estoque e carrinho e permite tentar novamente',
+    () async {
+      final failing = _FailingDatabase();
+      final item = await preparePurchase(target: failing);
+      failing.failWrites = true;
+      await expectLater(
+        persistence!.completePurchase([item]),
+        throwsStateError,
+      );
+      expect(ProductStore.instance.products.single.stock, 7);
+      expect(CartStore.instance.unitCount, 5);
+      final snapshot = (await database!.load())!;
+      expect(snapshot.products.single.stock, 7);
+      expect(snapshot.carts['compra@example.com']!.single.quantity, 5);
+      failing.failWrites = false;
+      await persistence!.completePurchase([item]);
+      expect((await database!.load())!.products.single.stock, 2);
+      expect(CartStore.instance.items, isEmpty);
+    },
+  );
+
   test(
     'arquivo SQLite preserva cadastro, foto, endereco e carrinho ao reabrir',
     () async {

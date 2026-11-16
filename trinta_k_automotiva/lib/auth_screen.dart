@@ -11,7 +11,7 @@ import 'local_persistence.dart';
 const _red = Color(0xFFE11D2E);
 const _panel = Color(0xFF171717);
 const _muted = Color(0xFF92979D);
-final _numericCharacters = RegExp(r'\p{N}', unicode: true);
+final _invalidNameCharacters = RegExp(r'[^\p{L}\p{M} ]', unicode: true);
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.onAuthenticated});
@@ -256,21 +256,20 @@ class _AuthScreenState extends State<AuthScreen> {
                             icon: _isCompany
                                 ? Icons.business_outlined
                                 : Icons.person_outline,
-                            inputFormatters: _isCompany
-                                ? [
-                                    FilteringTextInputFormatter.deny(
-                                      _numericCharacters,
-                                    ),
-                                  ]
-                                : null,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.deny(
+                                _invalidNameCharacters,
+                              ),
+                            ],
                             validator: (value) {
                               final name = value?.trim() ?? '';
                               if (name.isEmpty) {
                                 return 'Informe ${_isCompany ? 'a razão social' : 'seu nome'}';
                               }
-                              if (_isCompany &&
-                                  _numericCharacters.hasMatch(name)) {
-                                return 'A razão social não pode conter números';
+                              if (_invalidNameCharacters.hasMatch(name)) {
+                                return _isCompany
+                                    ? 'Use apenas letras e espaços na razão social'
+                                    : 'Use apenas letras e espaços no nome';
                               }
                               return null;
                             },

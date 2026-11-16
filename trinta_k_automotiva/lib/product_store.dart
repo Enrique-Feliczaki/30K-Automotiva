@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import 'cart_item.dart';
+
 class StoreProduct {
   const StoreProduct({
     required this.id,
@@ -135,6 +137,46 @@ class ProductStore extends ChangeNotifier {
   ];
 
   List<StoreProduct> get products => List.unmodifiable(_products);
+
+  bool hasSku(String sku, {String? excludingProductId}) => _products.any(
+    (product) =>
+        product.id != excludingProductId && product.sku.trim() == sku.trim(),
+  );
+
+  List<StoreProduct> stockAfterPurchase(Iterable<CartItem> items) {
+    final quantities = <String, int>{};
+    for (final item in items) {
+      final matches = _products.where(
+        (product) => item.productId != null
+            ? product.id == item.productId
+            : product.name == item.name,
+      );
+      if (matches.length != 1 || item.quantity <= 0) {
+        throw StateError('Produto indisponível. Revise seu carrinho.');
+      }
+      final product = matches.single;
+      quantities.update(
+        product.id,
+        (value) => value + item.quantity,
+        ifAbsent: () => item.quantity,
+      );
+    }
+    if (quantities.isEmpty) {
+      throw StateError('Adicione produtos ao carrinho antes de finalizar.');
+    }
+    return _products.map((product) {
+      final quantity = quantities[product.id] ?? 0;
+      if (quantity > product.stock) {
+        throw StateError(
+          'Estoque insuficiente para ${product.name}. Revise seu carrinho.',
+        );
+      }
+      return quantity == 0
+          ? product
+          : product.copyWith(stock: product.stock - quantity);
+    }).toList();
+  }
+
   void restore(Iterable<StoreProduct> products) {
     _products
       ..clear()
@@ -149,6 +191,9 @@ class ProductStore extends ChangeNotifier {
       _products.where((product) => product.isEmpty).length;
 
   void add(StoreProduct product) {
+    if (hasSku(product.sku)) {
+      throw StateError('Já existe um produto com este SKU.');
+    }
     final id = product.id.isEmpty
         ? DateTime.now().microsecondsSinceEpoch.toString()
         : product.id;
@@ -159,6 +204,9 @@ class ProductStore extends ChangeNotifier {
   void update(StoreProduct product) {
     final index = _products.indexWhere((item) => item.id == product.id);
     if (index < 0) return;
+    if (hasSku(product.sku, excludingProductId: product.id)) {
+      throw StateError('Já existe um produto com este SKU.');
+    }
     _products[index] = product;
     notifyListeners();
   }

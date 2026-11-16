@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:trinta_k_automotiva/cart_item.dart';
+import 'package:trinta_k_automotiva/cart_store.dart';
 import 'package:trinta_k_automotiva/customer_profile.dart';
 import 'package:trinta_k_automotiva/payment_screen.dart';
+import 'package:trinta_k_automotiva/product_store.dart';
 
 void main() {
   final profile = CustomerProfile.instance;
   late Map<String, String> address;
+  late List<StoreProduct> savedProducts;
+  late List<CartItem> savedCart;
 
   const item = CartItem(
+    productId: 'cera-liquida',
     name: 'Cera QA',
     category: 'Ceras',
     price: 59.90,
@@ -16,17 +21,40 @@ void main() {
     icon: Icons.auto_awesome,
   );
 
-  Future<void> open(WidgetTester tester) async {
+  Future<void> open(WidgetTester tester, {bool throughCart = false}) async {
     tester.view.physicalSize = const Size(1100, 1900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      const MaterialApp(home: PaymentScreen(items: [item])),
+      MaterialApp(
+        home: throughCart
+            ? const Scaffold(body: Text('Tela inicial'))
+            : const PaymentScreen(items: [item]),
+      ),
     );
+    if (throughCart) {
+      final navigator = Navigator.of(tester.element(find.text('Tela inicial')));
+      navigator.push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('Carrinho')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      navigator.push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => const PaymentScreen(items: [item]),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
   }
 
   setUp(() {
+    savedProducts = ProductStore.instance.products;
+    savedCart = CartStore.instance.items;
+    ProductStore.instance.setStock(item.productId!, 7);
+    CartStore.instance.restore([item]);
     address = {
       'postalCode': profile.postalCode,
       'state': profile.state,
@@ -45,6 +73,8 @@ void main() {
   });
 
   tearDown(() {
+    ProductStore.instance.restore(savedProducts);
+    CartStore.instance.restore(savedCart);
     profile
       ..postalCode = address['postalCode']!
       ..state = address['state']!
@@ -132,6 +162,20 @@ void main() {
         find.widgetWithText(TextFormField, label),
       );
 
+      final name = field('Nome impresso no cartão').validator!;
+      for (final value in [
+        '',
+        '   ',
+        'João 123',
+        'Maria@Silva',
+        '１２３',
+        '\u0301',
+      ]) {
+        expect(name(value), isNotNull, reason: value);
+      }
+      expect(name('João da Conceição'), isNull);
+      expect(name('Jose\u0301 Silva'), isNull);
+
       final number = field('Número do cartão').validator!;
       for (final value in [
         '',
@@ -168,6 +212,7 @@ void main() {
       }
 
       for (final entry in {
+        'Nome impresso no cartão': ['João 123 & Silva! １２３', 'João   Silva '],
         'Número do cartão': ['1234567890123456a7', '1234567890123456'],
         'CVV': ['0a123', '012'],
         'Validade': ['01/26a7', '01/26'],
@@ -193,7 +238,7 @@ void main() {
   testWidgets('QA-107 endereco valido permite confirmar fluxo simulado', (
     tester,
   ) async {
-    await open(tester);
+    await open(tester, throughCart: true);
     const values = [
       '85010-000',
       'PR',
@@ -205,10 +250,32 @@ void main() {
     for (var i = 0; i < values.length; i++) {
       await tester.enterText(find.byType(TextFormField).at(i), values[i]);
     }
+    final submit = tester
+        .widget<FilledButton>(
+          find.widgetWithText(FilledButton, 'Continuar para o Pix'),
+        )
+        .onPressed!;
     await tester.tap(find.text('Continuar para o Pix'));
+    submit(); // A repeated confirmation must not debit the stock again.
     await tester.pump();
     expect(find.text('Tudo certo!'), findsOneWidget);
+    expect(
+      ProductStore.instance.products
+          .firstWhere((p) => p.id == item.productId)
+          .stock,
+      5,
+    );
+    expect(CartStore.instance.items, isEmpty);
     expect(profile.postalCode, '85010-000');
     expect(profile.city, 'Guarapuava');
+    await tester.tap(find.text('Entendi'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tela inicial'), findsOneWidget);
+    expect(find.byType(PaymentScreen), findsNothing);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(
+      Navigator.of(tester.element(find.text('Tela inicial'))).canPop(),
+      isFalse,
+    );
   });
 }

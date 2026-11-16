@@ -178,8 +178,25 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
   int _category = 0;
+  final _searchController = TextEditingController();
   final _homeCategories = ProductStore.homeCategories;
   List<String> get _categories => ['Todos', ..._homeCategories];
+
+  String _normalizeSearch(String text) => text
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[áàâãä]'), 'a')
+      .replaceAll(RegExp(r'[éèêë]'), 'e')
+      .replaceAll(RegExp(r'[íìîï]'), 'i')
+      .replaceAll(RegExp(r'[óòôõö]'), 'o')
+      .replaceAll(RegExp(r'[úùûü]'), 'u')
+      .replaceAll('ç', 'c');
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +229,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 slivers: [
                   SliverToBoxAdapter(child: _header()),
                   SliverToBoxAdapter(child: _search()),
-                  SliverToBoxAdapter(child: _hero()),
+                  if (_searchController.text.trim().isEmpty)
+                    SliverToBoxAdapter(child: _hero()),
                   SliverToBoxAdapter(child: _categoriesSection()),
                   SliverToBoxAdapter(child: _offersSection()),
                   const SliverToBoxAdapter(child: SizedBox(height: 28)),
@@ -583,14 +601,25 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF2B2B2B)),
       ),
-      child: const TextField(
-        style: TextStyle(fontSize: 13),
+      child: TextField(
+        key: const ValueKey('product-search'),
+        controller: _searchController,
+        onChanged: (_) => setState(() {}),
+        textInputAction: TextInputAction.search,
+        style: const TextStyle(fontSize: 13),
         decoration: InputDecoration(
           hintText: 'O que você está procurando?',
-          hintStyle: TextStyle(color: _muted, fontSize: 13),
-          prefixIcon: Icon(Icons.search, color: _silver, size: 20),
+          hintStyle: const TextStyle(color: _muted, fontSize: 13),
+          prefixIcon: const Icon(Icons.search, color: _silver, size: 20),
+          suffixIcon: _searchController.text.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: 'Limpar pesquisa',
+                  onPressed: () => setState(_searchController.clear),
+                  icon: const Icon(Icons.close, color: _silver, size: 20),
+                ),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 13),
+          contentPadding: const EdgeInsets.symmetric(vertical: 13),
         ),
       ),
     ),
@@ -840,11 +869,10 @@ class _HomeScreenState extends State<HomeScreen> {
     builder: (context, _) {
       final allProducts = ProductStore.instance.products;
       final selectedCategory = _category == 0 ? null : _categories[_category];
-      final products = selectedCategory == null
-          ? allProducts
-          : allProducts
-                .where((product) => product.category == selectedCategory)
-                .toList();
+      final query = _normalizeSearch(_searchController.text);
+      final products = allProducts.where((product) =>
+          (selectedCategory == null || product.category == selectedCategory) &&
+          _normalizeSearch(product.name).contains(query)).toList();
       return Padding(
         padding: const EdgeInsets.only(top: 27),
         child: Column(
@@ -863,11 +891,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 13),
             if (products.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
                 child: Text(
-                  'Nenhum produto nesta categoria.',
-                  style: TextStyle(color: _muted, fontSize: 11),
+                  query.isEmpty
+                      ? 'Nenhum produto nesta categoria.'
+                      : 'Nenhum produto encontrado para esta pesquisa.',
+                  style: const TextStyle(color: _muted, fontSize: 11),
                 ),
               )
             else
@@ -1079,16 +1109,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: IconButton.styleFrom(
                         backgroundColor: const Color(0xFF351518),
                         foregroundColor: const Color(0xFFFF737B),
+                        disabledBackgroundColor: widget.isAdmin
+                            ? const Color(0xFF351518)
+                            : null,
+                        disabledForegroundColor: widget.isAdmin
+                            ? const Color(0xFFFF737B)
+                            : null,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      onPressed: () => _addProduct(
-                        name: names[index].replaceAll('\n', ' '),
-                        category: categories[index],
-                        price: numericPrices[index],
-                        icon: icons[index],
-                      ),
+                      onPressed: widget.isAdmin
+                          ? null
+                          : () => _addProduct(
+                              name: names[index].replaceAll('\n', ' '),
+                              category: categories[index],
+                              price: numericPrices[index],
+                              icon: icons[index],
+                            ),
                       icon: const Icon(Icons.add_shopping_cart, size: 16),
                     ),
                   ],
@@ -1118,29 +1156,33 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Stack(
               children: [
-                Container(
-                  height: 140,
-                  width: double.infinity,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF111111),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(12),
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    clipBehavior: Clip.antiAlias,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF111111),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(12),
+                      ),
                     ),
-                  ),
-                  child: product.imageBytes == null
-                      ? Center(
-                          child: Icon(
-                            product.icon,
-                            size: 32,
-                            color: const Color(0xFF777B80),
+                    child: product.imageBytes == null
+                        ? Center(
+                            child: Icon(
+                              product.icon,
+                              size: 32,
+                              color: const Color(0xFF777B80),
+                            ),
+                          )
+                        : Image.memory(
+                            product.imageBytes!,
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            height: double.infinity,
                           ),
-                        )
-                      : Image.memory(
-                          product.imageBytes!,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                        ),
+                  ),
                 ),
                 if (product.stock == 0)
                   Positioned.fill(
@@ -1164,14 +1206,17 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      height: 1.2,
-                      fontWeight: FontWeight.w600,
+                  SizedBox(
+                    height: MediaQuery.textScalerOf(context).scale(14) * 1.2 * 2,
+                    child: Text(
+                      product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.2,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1205,7 +1250,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? 'Produto esgotado'
                               : 'Adicionar à sacola',
                           onPressed:
-                              product.stock == 0 ||
+                              widget.isAdmin ||
+                                  product.stock == 0 ||
                                   _customerPrice(product) == null
                               ? null
                               : () => _addCatalogProduct(product),
@@ -1213,6 +1259,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: IconButton.styleFrom(
                             backgroundColor: const Color(0xFF351518),
                             foregroundColor: const Color(0xFFFF737B),
+                            disabledBackgroundColor: widget.isAdmin
+                                ? const Color(0xFF351518)
+                                : null,
+                            disabledForegroundColor: widget.isAdmin
+                                ? const Color(0xFFFF737B)
+                                : null,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -1241,6 +1293,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _addCatalogProduct(StoreProduct product) async {
+    if (widget.isAdmin) return;
     final price = _customerPrice(product);
     if (price == null) return;
     final added = CartStore.instance.add(
@@ -1282,6 +1335,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required double price,
     required IconData icon,
   }) {
+    if (widget.isAdmin) return;
     CartStore.instance.add(
       CartItem(
         name: name,
@@ -1374,11 +1428,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       borderRadius: BorderRadius.circular(18),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: InteractiveViewer(
-                      minScale: 1,
-                      maxScale: 4,
-                      child: SizedBox.expand(child: image),
-                    ),
+                    child: SizedBox.expand(child: image),
                   ),
                   const SizedBox(height: 22),
                   Text(
@@ -1473,13 +1523,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      remaining == 0
-                          ? 'Quantidade máxima em estoque atingida.'
-                          : 'Você pode adicionar mais $remaining unidades.',
-                      style: const TextStyle(color: _muted, fontSize: 12),
-                    ),
+                    if (remaining == 0) ...[
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Quantidade máxima em estoque atingida.',
+                        style: TextStyle(color: _muted, fontSize: 12),
+                      ),
+                    ],
                   ],
                 ],
               ),

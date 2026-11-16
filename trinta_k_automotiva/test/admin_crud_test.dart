@@ -57,14 +57,38 @@ void main() {
     await tester.tap(find.text('Novo produto').last);
     await tester.pumpAndSettle();
     await type(tester, 'Nome do produto', 'Produto UI QA');
-    await type(tester, 'Código / SKU', 'UI-QA-136');
+    await type(tester, 'Código / SKU', '0136');
     await type(tester, 'Preço no varejo (R\$)', '48,50');
     await type(tester, 'Preço no atacado (R\$)', '45,00');
     await save(tester);
     expect(store.products.length, before + 1);
     final product = store.products.firstWhere((p) => p.name == 'Produto UI QA');
-    expect(product.sku, 'UI-QA-136');
+    expect(product.sku, '0136');
     expect(product.price, 48.5);
+  });
+
+  testWidgets('SKU aceita somente números e no máximo 4 dígitos', (tester) async {
+    await open(tester);
+    await tester.tap(find.text('Novo produto').last);
+    await tester.pumpAndSettle();
+    await type(tester, 'Código / SKU', 'ab012345');
+    expect(tester.widget<TextField>(field('Código / SKU')).controller!.text, '0123');
+  });
+
+  testWidgets('cadastro com SKU repetido mantém o formulário aberto', (tester) async {
+    store.update(store.products.first.copyWith(sku: '0123'));
+    final before = store.products.length;
+    await open(tester);
+    await tester.tap(find.text('Novo produto').last);
+    await tester.pumpAndSettle();
+    await type(tester, 'Nome do produto', 'Produto duplicado');
+    await type(tester, 'Código / SKU', '0123');
+    await type(tester, 'Preço no varejo (R\$)', '48,50');
+    await type(tester, 'Preço no atacado (R\$)', '45,00');
+    await save(tester);
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text('Já existe um produto com este SKU'), findsOneWidget);
+    expect(store.products.length, before);
   });
 
   testWidgets('QA-137 cancelar exclusao preserva produto', (tester) async {

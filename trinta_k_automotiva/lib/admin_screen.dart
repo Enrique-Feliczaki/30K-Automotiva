@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'responsive_layout.dart';
 
@@ -568,7 +569,9 @@ class _ProductEditorState extends State<_ProductEditor> {
               children: [
                 Expanded(child: _categoryDropdown()),
                 const SizedBox(width: 9),
-                Expanded(child: _field(_sku, 'Código / SKU', required: true)),
+                Expanded(
+                  child: _field(_sku, 'Código / SKU', required: true, sku: true),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -655,15 +658,37 @@ class _ProductEditorState extends State<_ProductEditor> {
     bool number = false,
     bool positive = false,
     bool whole = false,
+    bool sku = false,
   }) => TextFormField(
     controller: controller,
-    keyboardType: number
+    inputFormatters: sku
+        ? [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(4),
+          ]
+        : null,
+    keyboardType: sku
+        ? TextInputType.number
+        : number
         ? const TextInputType.numberWithOptions(decimal: true)
         : TextInputType.text,
     style: const TextStyle(fontSize: 12),
     validator: (value) {
       if (required && (value == null || value.trim().isEmpty))
         return 'Campo obrigatório';
+      if (sku) {
+        final code = value?.trim() ?? '';
+        if (code != widget.product?.sku &&
+            !RegExp(r'^[0-9]{1,4}$').hasMatch(code)) {
+          return 'Informe um SKU com até 4 dígitos numéricos';
+        }
+        if (ProductStore.instance.hasSku(
+          code,
+          excludingProductId: widget.product?.id,
+        )) {
+          return 'Já existe um produto com este SKU';
+        }
+      }
       if (number && value != null && value.trim().isNotEmpty) {
         final parsed = _parseNumber(value);
         if (parsed == null || !parsed.isFinite)

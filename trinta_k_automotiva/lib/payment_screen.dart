@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'responsive_layout.dart';
 
 import 'cart_item.dart';
+import 'cart_store.dart';
+import 'product_store.dart';
 import 'customer_profile.dart';
 import 'local_persistence.dart';
 import 'shipping.dart';
@@ -14,6 +16,7 @@ const _surfaceRaised = Color(0xFF202020);
 const _accent = Color(0xFFE11D2E);
 const _silver = Color(0xFFC9CDD2);
 const _muted = Color(0xFF92979D);
+final _invalidCardholderCharacters = RegExp(r'[^\p{L}\p{M} ]', unicode: true);
 
 enum _PaymentMethod { pix, card }
 
@@ -28,6 +31,8 @@ class PaymentScreen extends StatefulWidget {
 
 class _PaymentScreenState extends State<PaymentScreen> {
   _PaymentMethod _method = _PaymentMethod.pix;
+  bool _submitting = false;
+  bool _completed = false;
   final _formKey = GlobalKey<FormState>();
   final _postalCodeController = TextEditingController(
     text: CustomerProfile.instance.postalCode,
@@ -229,8 +234,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           hint: '00000-000',
           keyboardType: TextInputType.number,
           validator: (value) =>
-              value == null ||
-                  value.replaceAll(RegExp(r'\D'), '').length != 8
+              value == null || value.replaceAll(RegExp(r'\D'), '').length != 8
               ? 'Informe um CEP válido'
               : null,
         ),
@@ -347,7 +351,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _inputField(
           label: 'Nome impresso no cartão',
           hint: 'Como aparece no cartão',
-          validator: _required,
+          inputFormatters: [
+            FilteringTextInputFormatter.deny(_invalidCardholderCharacters),
+          ],
+          validator: (value) {
+            final requiredError = _required(value);
+            if (requiredError != null) return requiredError;
+            return _invalidCardholderCharacters.hasMatch(value!) ||
+                    !RegExp(r'\p{L}', unicode: true).hasMatch(value)
+                ? 'Use apenas letras e espaços no nome'
+                : null;
+          },
         ),
         const SizedBox(height: 10),
         _inputField(
@@ -483,7 +497,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         border: Border(top: BorderSide(color: Color(0xFF292929))),
       ),
       child: FilledButton.icon(
-        onPressed: _submitOrder,
+        onPressed: _submitting || _completed ? null : _submitOrder,
         style: FilledButton.styleFrom(
           backgroundColor: _accent,
           foregroundColor: Colors.white,
@@ -504,7 +518,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
   );
 
   Future<void> _submitOrder() async {
+    if (_submitting || _completed) return;
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _submitting = true);
     final profile = CustomerProfile.instance;
     profile
       ..postalCode = _postalCodeController.text.trim()
@@ -515,11 +531,34 @@ class _PaymentScreenState extends State<PaymentScreen> {
       ..houseNumber = _houseNumberController.text.trim();
     profile.save();
     try {
-      await LocalPersistence.active?.flush();
-    } catch (_) {
+      final persistence = LocalPersistence.active;
+      if (persistence != null) {
+        await persistence.flush();
+        await persistence.completePurchase(widget.items);
+      } else {
+        final products = ProductStore.instance.stockAfterPurchase(widget.items);
+        ProductStore.instance.restore(products);
+        CartStore.instance.restore([]);
+      }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is StateError
+                ? error.message.toString()
+                : 'Não foi possível finalizar a compra. Tente novamente.',
+          ),
+        ),
+      );
       return;
     }
     if (!mounted) return;
+    setState(() {
+      _submitting = false;
+      _completed = true;
+    });
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
@@ -538,7 +577,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
             child: const Text(
               'Entendi',
               style: TextStyle(color: Color(0xFFFF737B)),

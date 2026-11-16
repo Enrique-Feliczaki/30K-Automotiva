@@ -160,7 +160,7 @@ void main() {
   });
 
   testWidgets(
-    'razao social filtra numeros ao digitar ou colar e preserva acentos',
+    'nome e razao social permitem apenas letras e espacos',
     (tester) async {
       await open(tester, (_) {});
       await tester.tap(find.text('Cadastrar'));
@@ -170,18 +170,23 @@ void main() {
       final field = find.byType(TextFormField).first;
       final controller = tester.widget<TextFormField>(field).controller!;
       await tester.enterText(field, '30K Automotiva São José & Cia. 123');
-      expect(controller.text, 'K Automotiva São José & Cia. ');
+      expect(controller.text, 'K Automotiva São José  Cia ');
       await tester.enterText(field, '1234567890');
       expect(controller.text, isEmpty);
       await submit(tester, 'Criar cadastro');
       expect(find.text('Informe a razão social'), findsOneWidget);
       await tester.enterText(field, 'Empresa １２３ ²');
       expect(controller.text, 'Empresa  ');
+
+      await tester.tap(find.text('Pessoa física'));
+      await tester.pump();
+      await tester.enterText(field, 'João da Silva 123 &');
+      expect(controller.text, 'João da Silva ');
     },
   );
 
   testWidgets(
-    'cadastro rejeita razao social numerica mesmo sem passar pelo teclado',
+    'cadastro rejeita razao social com simbolos sem passar pelo teclado',
     (tester) async {
       bool? authenticated;
       await open(tester, (isAdmin) => authenticated = isAdmin);
@@ -192,10 +197,10 @@ void main() {
       final field = tester.widget<TextFormField>(
         find.byType(TextFormField).first,
       );
-      field.controller!.text = 'Empresa 123';
+      field.controller!.text = 'Empresa &';
       await submit(tester, 'Criar cadastro');
       expect(
-        find.text('A razão social não pode conter números'),
+        find.text('Use apenas letras e espaços na razão social'),
         findsOneWidget,
       );
       expect(
