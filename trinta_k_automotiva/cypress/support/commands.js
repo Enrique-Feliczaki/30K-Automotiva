@@ -9,3 +9,7 @@ Cypress.Commands.add('ativarAcessibilidade', () => {
   })
   cy.get('flt-semantics-host', { timeout: 15000 }).should('exist')
 })
+
+Cypress.Commands.add('preencherCampo', (rotulo, valor) => {
+  cy.get(`[aria-label="${rotulo}"]`).click().type(valor)
+})

@@ -3,27 +3,11 @@ import 'package:trinta_k_automotiva/email_validation.dart';
 
 void main() {
   group('validação de e-mail para cadastro', () {
-    test('aceita domínios completos comuns', () {
+    test('aceita endereços com formato válido sem limitar o domínio', () {
       expect(validateRegistrationEmail('cliente@exemplo.com'), isNull);
-      expect(validateRegistrationEmail('cliente@exemplo.com.br'), isNull);
-      expect(validateRegistrationEmail('cliente@loja.exemplo.com'), isNull);
-    });
-
-    test('rejeita dominio terminado somente em .co', () {
-      expect(
-        validateRegistrationEmail('cliente@exemplo.co'),
-        invalidEmailError,
-      );
-    });
-
-    test('rejeita letras ou sufixos extras depois de .com', () {
-      for (final email in [
-        'cliente@exemplo.come',
-        'cliente@exemplo.comx',
-        'cliente@exemplo.com.brx',
-      ]) {
-        expect(validateRegistrationEmail(email), invalidEmailError);
-      }
+      expect(validateRegistrationEmail('cliente@exemplo.co'), isNull);
+      expect(validateRegistrationEmail('cliente@exemplo.dev'), isNull);
+      expect(validateRegistrationEmail('cliente@e.com'), isNull);
     });
 
     test('rejeita enderecos incompletos ou malformados', () {
@@ -35,6 +19,7 @@ void main() {
         '.cliente@exemplo.com',
         'cliente..vendas@exemplo.com',
         'cliente@-exemplo.com',
+        'cliente@exemplo.123',
       ]) {
         expect(validateRegistrationEmail(email), invalidEmailError);
       }

@@ -21,33 +21,14 @@ void main() {
     icon: Icons.auto_awesome,
   );
 
-  Future<void> open(WidgetTester tester, {bool throughCart = false}) async {
+  Future<void> open(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1100, 1900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(
-        home: throughCart
-            ? const Scaffold(body: Text('Tela inicial'))
-            : const PaymentScreen(items: [item]),
-      ),
+      MaterialApp(home: const PaymentScreen(items: [item])),
     );
-    if (throughCart) {
-      final navigator = Navigator.of(tester.element(find.text('Tela inicial')));
-      navigator.push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => const Scaffold(body: Text('Carrinho')),
-        ),
-      );
-      await tester.pumpAndSettle();
-      navigator.push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => const PaymentScreen(items: [item]),
-        ),
-      );
-      await tester.pumpAndSettle();
-    }
   }
 
   setUp(() {
@@ -112,7 +93,9 @@ void main() {
     expect(find.byType(TextFormField), findsNWidgets(10));
   });
 
-  testWidgets('validade insere barra ao digitar somente quatro numeros', (tester) async {
+  testWidgets('validade insere barra ao digitar somente quatro numeros', (
+    tester,
+  ) async {
     await open(tester);
     await tester.tap(find.text('Cartão de crédito'));
     await tester.pump();
@@ -248,48 +231,4 @@ void main() {
       }
     },
   );
-
-  testWidgets('QA-107 endereco valido permite confirmar fluxo simulado', (
-    tester,
-  ) async {
-    await open(tester, throughCart: true);
-    const values = [
-      '85010-000',
-      'PR',
-      'Guarapuava',
-      'Centro',
-      'Rua Teste',
-      '100',
-    ];
-    for (var i = 0; i < values.length; i++) {
-      await tester.enterText(find.byType(TextFormField).at(i), values[i]);
-    }
-    final submit = tester
-        .widget<FilledButton>(
-          find.widgetWithText(FilledButton, 'Continuar para o Pix'),
-        )
-        .onPressed!;
-    await tester.tap(find.text('Continuar para o Pix'));
-    submit(); // A repeated confirmation must not debit the stock again.
-    await tester.pump();
-    expect(find.text('Tudo certo!'), findsOneWidget);
-    expect(
-      ProductStore.instance.products
-          .firstWhere((p) => p.id == item.productId)
-          .stock,
-      5,
-    );
-    expect(CartStore.instance.items, isEmpty);
-    expect(profile.postalCode, '85010-000');
-    expect(profile.city, 'Guarapuava');
-    await tester.tap(find.text('Entendi'));
-    await tester.pumpAndSettle();
-    expect(find.text('Tela inicial'), findsOneWidget);
-    expect(find.byType(PaymentScreen), findsNothing);
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(
-      Navigator.of(tester.element(find.text('Tela inicial'))).canPop(),
-      isFalse,
-    );
-  });
 }

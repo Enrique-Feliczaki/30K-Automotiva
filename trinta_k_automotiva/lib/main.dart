@@ -644,11 +644,15 @@ class _HomeScreenState extends State<HomeScreen> {
     builder: (context, _) => Stack(
       clipBehavior: Clip.none,
       children: [
-        _roundAction(
-          Icons.shopping_bag_outlined,
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const CartScreen())),
+        Semantics(
+          button: true,
+          label: 'Abrir sacola',
+          child: _roundAction(
+            Icons.shopping_bag_outlined,
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => const CartScreen())),
+          ),
         ),
         if (CartStore.instance.unitCount > 0)
           Positioned(

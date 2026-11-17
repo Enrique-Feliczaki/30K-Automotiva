@@ -121,48 +121,32 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(1), 'email-invalido');
     await submit(tester, 'Criar cadastro');
     expect(find.text('Informe um e-mail válido'), findsOneWidget);
-
-    await tester.enterText(
-      find.byType(TextFormField).at(1),
-      'cliente@exemplo.co',
-    );
-    await submit(tester, 'Criar cadastro');
-    expect(find.text('Informe um e-mail válido'), findsOneWidget);
-
-    await tester.enterText(
-      find.byType(TextFormField).at(1),
-      'cliente@exemplo.come',
-    );
-    await submit(tester, 'Criar cadastro');
-    expect(find.text('Informe um e-mail válido'), findsOneWidget);
   });
 
-  testWidgets(
-    'cadastro bloqueia terminacoes incorretas e aceita .com e .com.br',
-    (tester) async {
-      await open(tester, (_) {});
-      await tester.tap(find.text('Cadastrar'));
-      await tester.pump();
-      const error = 'Informe um e-mail válido';
-      for (final email in [
-        'cliente@gmail.co',
-        ' CLIENTE@GMAIL.CO ',
-        'cliente@gmail.come',
-        'cliente@gmail.comx',
-        'cliente@empresa.com.brr',
-      ]) {
-        await tester.enterText(find.byType(TextFormField).at(1), email);
-        await submit(tester, 'Criar cadastro');
-        expect(find.text(error), findsOneWidget);
-      }
-      for (final email in ['cliente@gmail.com', 'cliente@empresa.com.br']) {
-        await tester.enterText(find.byType(TextFormField).at(1), email);
-        await submit(tester, 'Criar cadastro');
-        expect(find.text(error), findsNothing);
-        expect(find.text('Informe um e-mail válido'), findsNothing);
-      }
-    },
-  );
+  testWidgets('cadastro valida formato sem restringir o dominio', (
+    tester,
+  ) async {
+    await open(tester, (_) {});
+    await tester.tap(find.text('Cadastrar'));
+    await tester.pump();
+    const error = 'Informe um e-mail válido';
+    for (final email in ['cliente@gmail', 'cliente@gmail.123']) {
+      await tester.enterText(find.byType(TextFormField).at(1), email);
+      await submit(tester, 'Criar cadastro');
+      expect(find.text(error), findsOneWidget);
+    }
+    for (final email in [
+      'cliente@gmail.com',
+      'cliente@empresa.com.br',
+      'cliente@e.com',
+      'cliente@empresa.co',
+    ]) {
+      await tester.enterText(find.byType(TextFormField).at(1), email);
+      await submit(tester, 'Criar cadastro');
+      expect(find.text(error), findsNothing);
+      expect(find.text('Informe um e-mail válido'), findsNothing);
+    }
+  });
 
   testWidgets('QA-81 cadastro rejeita CPF invalido', (tester) async {
     await open(tester, (_) {});
