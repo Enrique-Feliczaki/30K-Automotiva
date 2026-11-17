@@ -110,7 +110,7 @@ void main() {
       );
       final snapshot = (await database!.load())!;
       expect(snapshot.products.single.stock, 2);
-      expect(snapshot.carts['compra@example.com'], isEmpty);
+      expect(snapshot.carts['compra@example.com'] ?? const <CartItem>[], isEmpty);
     },
   );
 
@@ -185,6 +185,7 @@ void main() {
       database = LocalDatabase(NativeDatabase(path));
       final loaded = (await database!.load())!;
       expect(loaded.products.single.imageBytes, [1, 2, 3, 255]);
+      expect(loaded.products.single.description, product.description);
       expect(loaded.products.single.icon, product.icon);
       expect(loaded.products.single.stock, product.stock);
       expect(

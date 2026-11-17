@@ -76,7 +76,6 @@ class ProductStore extends ChangeNotifier {
     'Polimento',
     'Pretinhos',
     'Aromatizantes',
-    'Acessórios',
   ];
 
   static const List<String> selectableCategories = [
@@ -95,8 +94,7 @@ class ProductStore extends ChangeNotifier {
       stock: 24,
       minimumStock: 5,
       icon: Icons.local_drink_outlined,
-      description:
-          'Shampoo automotivo concentrado para uma limpeza eficiente e segura, preservando o brilho da pintura.',
+      description: 'Shampoo automotivo concentrado para uma limpeza eficiente e segura, preservando o brilho da pintura.',
     ),
     const StoreProduct(
       id: 'cera-liquida',
@@ -108,8 +106,7 @@ class ProductStore extends ChangeNotifier {
       stock: 4,
       minimumStock: 5,
       icon: Icons.auto_awesome,
-      description:
-          'Cera líquida de aplicação prática que realça o brilho e ajuda a proteger a pintura do veículo.',
+      description: 'Cera líquida de aplicação prática que realça o brilho e ajuda a proteger a pintura do veículo.',
     ),
     const StoreProduct(
       id: 'revitalizador-pneus',
@@ -121,8 +118,7 @@ class ProductStore extends ChangeNotifier {
       stock: 12,
       minimumStock: 5,
       icon: Icons.tire_repair,
-      description:
-          'Revitalizador desenvolvido para renovar a aparência dos pneus e proporcionar acabamento uniforme.',
+      description: 'Revitalizador desenvolvido para renovar a aparência dos pneus e proporcionar acabamento uniforme.',
     ),
     const StoreProduct(
       id: 'graphene-armor',
@@ -133,8 +129,7 @@ class ProductStore extends ChangeNotifier {
       stock: 8,
       minimumStock: 3,
       icon: Icons.shield_outlined,
-      description:
-          'Proteção avançada com grafeno para aumentar a resistência, o brilho e a durabilidade da superfície.',
+      description: 'Proteção avançada com grafeno para aumentar a resistência, o brilho e a durabilidade da superfície.',
     ),
     const StoreProduct(
       id: 'ultra-plush',
@@ -145,8 +140,7 @@ class ProductStore extends ChangeNotifier {
       stock: 0,
       minimumStock: 5,
       icon: Icons.layers_outlined,
-      description:
-          'Toalha de microfibra macia e de alta gramatura, ideal para acabamento e remoção de produtos.',
+      description: 'Toalha de microfibra macia e de alta gramatura, ideal para acabamento e remoção de produtos.',
     ),
   ];
 

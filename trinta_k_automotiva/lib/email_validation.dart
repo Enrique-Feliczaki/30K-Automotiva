@@ -1,4 +1,28 @@
 const invalidEmailError = 'Informe um e-mail válido';
+const acceptedRegistrationEmailSuffixes = [
+  '.com',
+  '.com.br',
+  '.net',
+  '.net.br',
+  '.org',
+  '.org.br',
+  '.edu',
+  '.edu.br',
+  '.gov',
+  '.gov.br',
+  '.info',
+  '.biz',
+  '.io',
+  '.app',
+  '.dev',
+  '.me',
+  '.tech',
+  '.online',
+  '.store',
+  '.site',
+  '.co.uk',
+  '.pt',
+];
 
 final _localPartPattern = RegExp(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+$");
 final _domainLabelPattern = RegExp(
@@ -24,13 +48,7 @@ String? validateRegistrationEmail(String? value) {
     return invalidEmailError;
   }
 
-  final normalizedLabels = domainLabels
-      .map((label) => label.toLowerCase())
-      .toList();
-  final hasValidSuffix =
-      normalizedLabels.last == 'com' ||
-      (normalizedLabels.length >= 3 &&
-          normalizedLabels[normalizedLabels.length - 2] == 'com' &&
-          normalizedLabels.last == 'br');
+  final domain = parts.last.toLowerCase();
+  final hasValidSuffix = acceptedRegistrationEmailSuffixes.any(domain.endsWith);
   return hasValidSuffix ? null : invalidEmailError;
 }

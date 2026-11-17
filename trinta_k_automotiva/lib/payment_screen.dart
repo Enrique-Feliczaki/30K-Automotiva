@@ -5,6 +5,7 @@ import 'responsive_layout.dart';
 
 import 'address_validation.dart';
 import 'cart_item.dart';
+import 'card_expiry_input_formatter.dart';
 import 'cart_store.dart';
 import 'product_store.dart';
 import 'customer_profile.dart';
@@ -385,10 +386,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
               child: _inputField(
                 label: 'Validade',
                 hint: 'MM/AA',
-                keyboardType: TextInputType.datetime,
+                keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9/]')),
-                  LengthLimitingTextInputFormatter(5),
+                  CardExpiryInputFormatter(),
                 ],
                 validator: (value) =>
                     !RegExp(r'^(0[1-9]|1[0-2])/(2[6-9]|3[0-6])$')

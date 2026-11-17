@@ -45,3 +45,13 @@ String? validateHouseNumber(String? value) {
       ? null
       : invalidHouseNumberLengthError;
 }
+
+/// Shared entry points for the profile form and the checkout validators.
+class AddressValidation {
+  static String? postalCode(String? value) => validatePostalCode(value);
+  static String? state(String? value) => validateState(value);
+  static String? city(String? value) => validateAddressText(value);
+  static String? neighborhood(String? value) => validateAddressText(value);
+  static String? street(String? value) => validateAddressText(value);
+  static String? houseNumber(String? value) => validateHouseNumber(value);
+}

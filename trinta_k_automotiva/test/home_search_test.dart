@@ -17,6 +17,34 @@ void main() {
 
   final search = find.byKey(const ValueKey('product-search'));
 
+  for (final size in [const Size(390, 640), const Size(1100, 1800)]) {
+    testWidgets('explorar produtos abre catalogo e limpa categoria em $size', (tester) async {
+      await open(tester);
+      tester.view.physicalSize = size;
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Ceras'));
+      await tester.tap(find.text('Ceras'));
+      await tester.pumpAndSettle();
+      final scrollable = tester.state<ScrollableState>(
+        find.descendant(
+          of: find.byType(CustomScrollView),
+          matching: find.byType(Scrollable),
+        ).first,
+      );
+      scrollable.position.jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Explorar produtos'));
+      await tester.tap(find.text('Explorar produtos'));
+      await tester.pumpAndSettle();
+      if (scrollable.position.maxScrollExtent > 0) {
+        expect(scrollable.position.pixels, greaterThan(0));
+      }
+      expect(find.text('PRODUTOS').hitTestable(), findsOneWidget);
+      expect(find.text(ProductStore.instance.products.first.name), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('pesquisa por parte do nome ignora maiúsculas e acentos', (
     tester,
   ) async {

@@ -34,10 +34,12 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     navigationObserver.lastPushedRoute = null;
-    await tester.pumpWidget(MaterialApp(
-      home: HomeScreen(isAdmin: admin, onLogout: logout ?? () {}),
-      navigatorObservers: [navigationObserver],
-    ));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(isAdmin: admin, onLogout: logout ?? () {}),
+        navigatorObservers: [navigationObserver],
+      ),
+    );
     await tester.pumpAndSettle();
   }
 
@@ -55,10 +57,10 @@ void main() {
       'houseNumber': profile.houseNumber,
     };
     profile
+      ..isCompany = false
       ..name = ''
       ..document = ''
       ..email = ''
-      ..isCompany = false
       ..postalCode = ''
       ..state = ''
       ..city = ''
@@ -69,10 +71,10 @@ void main() {
 
   tearDown(() {
     profile
+      ..isCompany = savedIsCompany
       ..name = saved['name']!
       ..document = saved['document']!
       ..email = saved['email']!
-      ..isCompany = savedIsCompany
       ..postalCode = saved['postalCode']!
       ..state = saved['state']!
       ..city = saved['city']!
@@ -94,28 +96,51 @@ void main() {
     expect(find.text('Admin'), findsOneWidget);
   });
 
-  testWidgets('conta PJ nao recebe nenhuma funcionalidade administrativa', (
+  testWidgets('pessoa juridica navega sem acesso a administracao', (
     tester,
   ) async {
     profile.isCompany = true;
     await open(tester);
-
+    await tester.ensureVisible(find.text('COMPRE POR CATEGORIA'));
+    await tester.pumpAndSettle();
+    expect(find.text('Gerenciar'), findsNothing);
     expect(find.text('Admin'), findsNothing);
+    expect(find.byType(AdminScreen), findsNothing);
+    await tester.tap(find.text('Conta'));
+    await tester.pumpAndSettle();
+    expect(find.text('Minha conta'), findsOneWidget);
+    expect(find.text('Gerenciar'), findsNothing);
+    expect(find.text('Admin'), findsNothing);
+    await tester.tap(find.text('Início'));
+    await tester.pumpAndSettle();
     expect(find.text('Gerenciar'), findsNothing);
     expect(find.byType(AdminScreen), findsNothing);
+    expect(navigationObserver.lastPushedRoute, isNull);
+  });
+
+  testWidgets('somente administrador acessa painel pelo botao Gerenciar', (
+    tester,
+  ) async {
+    await open(tester, admin: true);
+    await tester.ensureVisible(find.text('Gerenciar'));
+    await tester.tap(find.text('Gerenciar'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AdminScreen), findsOneWidget);
   });
 
   testWidgets('QA-129 cliente acessa sacola pelo cabecalho', (tester) async {
     await open(tester);
     final icon = find.byIcon(Icons.shopping_bag_outlined).first;
-    final action = find.ancestor(
-      of: icon,
-      matching: find.byType(InkWell),
-    ).first;
+    final action = find
+        .ancestor(of: icon, matching: find.byType(InkWell))
+        .first;
     await tester.tap(action);
     await tester.pumpAndSettle();
-    expect(navigationObserver.lastPushedRoute, isNotNull,
-        reason: 'O ícone da sacola não abriu uma nova rota');
+    expect(
+      navigationObserver.lastPushedRoute,
+      isNotNull,
+      reason: 'O ícone da sacola não abriu uma nova rota',
+    );
     expect(find.byType(CartScreen), findsOneWidget);
   });
 
@@ -131,7 +156,10 @@ void main() {
     await open(tester);
     await tester.tap(find.text('Conta'));
     await tester.pump();
-    expect(find.text('Informe seu endereço ao finalizar um pedido.'), findsOneWidget);
+    expect(
+      find.text('Informe seu endereço ao finalizar um pedido.'),
+      findsOneWidget,
+    );
     expect(find.text('Cadastrar endereço'), findsOneWidget);
   });
 
@@ -152,12 +180,17 @@ void main() {
     );
     await tester.tap(destination);
     await tester.pumpAndSettle();
-    expect(navigationObserver.lastPushedRoute, isNotNull,
-        reason: 'O item Admin não abriu uma nova rota');
+    expect(
+      navigationObserver.lastPushedRoute,
+      isNotNull,
+      reason: 'O item Admin não abriu uma nova rota',
+    );
     expect(find.byType(AdminScreen), findsOneWidget);
   });
 
-  testWidgets('QA-134 formulario de endereco impede CEP invalido', (tester) async {
+  testWidgets('QA-134 formulario de endereco impede CEP invalido', (
+    tester,
+  ) async {
     await open(tester);
     await tester.tap(find.text('Conta'));
     await tester.pump();
@@ -169,16 +202,84 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
   });
 
-  testWidgets('QA-135 cancela cadastro de endereco sem alterar perfil', (tester) async {
+  testWidgets('QA-135 cancela cadastro de endereco sem alterar perfil', (
+    tester,
+  ) async {
     await open(tester);
     await tester.tap(find.text('Conta'));
     await tester.pump();
     await tester.tap(find.text('Cadastrar endereço'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, '12345678');
     await tester.tap(find.text('Cancelar'));
-    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
     expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Minha conta'), findsOneWidget);
     expect(profile.address, isEmpty);
+
+    await tester.tap(find.text('Cadastrar endereço'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).first)
+          .initialValue,
+      isEmpty,
+    );
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('simbolos no endereco impedem salvar sem alterar perfil', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.tap(find.text('Conta'));
+    await tester.pump();
+    await tester.tap(find.text('Cadastrar endereço'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextFormField);
+    final values = ['12345@678', '@@', 'Cidade@', 'Bairro#', 'Rua!', '10@'];
+    for (var index = 0; index < values.length; index++) {
+      await tester.enterText(fields.at(index), values[index]);
+    }
+    await tester.tap(find.text('Salvar endereço'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Informe um CEP válido'), findsOneWidget);
+    expect(find.text('Informe a sigla do estado com 2 letras'), findsOneWidget);
+    expect(find.text('Use apenas letras, números e espaços'), findsNWidgets(3));
+    expect(profile.address, isEmpty);
+    await tester.ensureVisible(find.text('Cancelar'));
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Minha conta'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('salva endereco e retorna ao perfil sem erros', (tester) async {
+    await open(tester);
+    await tester.tap(find.text('Conta'));
+    await tester.pump();
+    await tester.tap(find.text('Cadastrar endereço'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextFormField);
+    final values = ['12345678', 'sp', 'São Paulo', 'Centro', 'Rua Teste', '10'];
+    for (var index = 0; index < values.length; index++) {
+      await tester.enterText(fields.at(index), values[index]);
+    }
+    await tester.tap(find.text('Salvar endereço'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Minha conta'), findsOneWidget);
+    expect(profile.postalCode, '12345678');
+    expect(profile.state, 'SP');
+    expect(profile.city, 'São Paulo');
+    expect(profile.neighborhood, 'Centro');
+    expect(profile.street, 'Rua Teste');
+    expect(profile.houseNumber, '10');
   });
 
   testWidgets('campos de endereco usam o mesmo estilo e limitam o numero', (
@@ -190,9 +291,6 @@ void main() {
     await tester.tap(find.text('Cadastrar endereço'));
     await tester.pumpAndSettle();
 
-    TextFormField field(String label) => tester.widget<TextFormField>(
-      find.widgetWithText(TextFormField, label),
-    );
     InputDecoration decoration(String label) => tester
         .widget<TextField>(
           find.descendant(
@@ -210,7 +308,10 @@ void main() {
 
     final numberFinder = find.widgetWithText(TextFormField, 'Número');
     await tester.enterText(numberFinder, '123456789012345');
-    expect(field('Número').controller!.text, '123456');
+    final numberInput = tester.widget<EditableText>(
+      find.descendant(of: numberFinder, matching: find.byType(EditableText)),
+    );
+    expect(numberInput.controller.text, '123456');
   });
 
   testWidgets('cancelar alteracao de endereco repetidamente nao gera erro', (
@@ -256,7 +357,10 @@ void main() {
     );
     expect(scrollable.position.pixels, greaterThan(0));
     expect(find.text('PRODUTOS'), findsOneWidget);
-    expect(tester.getTopLeft(find.text('PRODUTOS')).dy, greaterThanOrEqualTo(0));
+    expect(
+      tester.getTopLeft(find.text('PRODUTOS')).dy,
+      greaterThanOrEqualTo(0),
+    );
     expect(
       tester.getBottomRight(find.text('PRODUTOS')).dy,
       lessThanOrEqualTo(700),

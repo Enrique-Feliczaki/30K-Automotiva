@@ -16,22 +16,29 @@ void main() {
   }
 
   Finder field(String label) => find.byWidgetPredicate(
-        (widget) => widget is TextField && widget.decoration?.labelText == label,
-      );
+    (widget) => widget is TextField && widget.decoration?.labelText == label,
+  );
 
-  Finder editorList() => find.descendant(
-        of: find.byType(Dialog),
-        matching: find.byType(Scrollable),
-      ).first;
+  Finder editorList() => find
+      .descendant(of: find.byType(Dialog), matching: find.byType(Scrollable))
+      .first;
 
   Future<void> type(WidgetTester tester, String label, String value) async {
-    await tester.scrollUntilVisible(field(label), 160, scrollable: editorList());
+    await tester.scrollUntilVisible(
+      field(label),
+      160,
+      scrollable: editorList(),
+    );
     await tester.enterText(field(label), value);
     await tester.pump();
   }
 
   Future<void> save(WidgetTester tester) async {
-    await tester.scrollUntilVisible(find.text('Salvar produto'), 160, scrollable: editorList());
+    await tester.scrollUntilVisible(
+      find.text('Salvar produto'),
+      160,
+      scrollable: editorList(),
+    );
     await tester.tap(find.text('Salvar produto'));
     await tester.pumpAndSettle();
   }
@@ -76,6 +83,50 @@ void main() {
     expect(product.price, 48.5);
   });
 
+  testWidgets('descricao opcional pode ser cadastrada editada e removida', (
+    tester,
+  ) async {
+    await open(tester);
+    await tester.tap(find.text('Novo produto').last);
+    await tester.pumpAndSettle();
+    await type(tester, 'Nome do produto', 'Produto com descrição');
+    await type(tester, 'Código / SKU', '30K-QA-999');
+    await type(tester, 'Preço no varejo (R\$)', '48,50');
+    await type(tester, 'Preço no atacado (R\$)', '45,00');
+    await type(
+      tester,
+      'Descrição',
+      '  Aplicar na superfície limpa.\nUsar uma microfibra.  ',
+    );
+    await save(tester);
+    final created = store.products.last;
+    expect(
+      created.description,
+      'Aplicar na superfície limpa.\nUsar uma microfibra.',
+    );
+
+    // Keep the created product visible while editing it again.
+    store.restore([created]);
+    await tester.pumpAndSettle();
+    for (final description in ['Descrição atualizada', '']) {
+      await openMenu(tester);
+      await tester.tap(find.text('Editar').last);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        field('Descrição'),
+        160,
+        scrollable: editorList(),
+      );
+      expect(
+        tester.widget<TextField>(field('Descrição')).controller!.text,
+        store.products.single.description,
+      );
+      await type(tester, 'Descrição', description);
+      await save(tester);
+      expect(store.products.single.description, description);
+    }
+  });
+
   testWidgets('SKU aceita o padrão alfanumérico usado pelos produtos', (
     tester,
   ) async {
@@ -89,7 +140,9 @@ void main() {
     );
   });
 
-  testWidgets('cadastro com SKU repetido mantém o formulário aberto', (tester) async {
+  testWidgets('cadastro com SKU repetido mantém o formulário aberto', (
+    tester,
+  ) async {
     final before = store.products.length;
     await open(tester);
     await tester.tap(find.text('Novo produto').last);
@@ -155,20 +208,14 @@ void main() {
     expect(updated.sku, '30K-XY-999');
   });
 
-  testWidgets('edicao permite alterar a descricao do produto', (
-    tester,
-  ) async {
+  testWidgets('edicao permite alterar a descricao do produto', (tester) async {
     final first = store.products.first;
     await open(tester);
     await openMenu(tester);
     await tester.tap(find.text('Editar').last);
     await tester.pumpAndSettle();
 
-    await type(
-      tester,
-      'Descrição',
-      'Nova descrição detalhada do produto.',
-    );
+    await type(tester, 'Descrição', 'Nova descrição detalhada do produto.');
     await save(tester);
 
     final updated = store.products.firstWhere((p) => p.id == first.id);

@@ -137,6 +137,33 @@ void main() {
     expect(find.text('Informe um e-mail válido'), findsOneWidget);
   });
 
+  testWidgets(
+    'cadastro bloqueia terminacoes incorretas e aceita .com e .com.br',
+    (tester) async {
+      await open(tester, (_) {});
+      await tester.tap(find.text('Cadastrar'));
+      await tester.pump();
+      const error = 'Informe um e-mail válido';
+      for (final email in [
+        'cliente@gmail.co',
+        ' CLIENTE@GMAIL.CO ',
+        'cliente@gmail.come',
+        'cliente@gmail.comx',
+        'cliente@empresa.com.brr',
+      ]) {
+        await tester.enterText(find.byType(TextFormField).at(1), email);
+        await submit(tester, 'Criar cadastro');
+        expect(find.text(error), findsOneWidget);
+      }
+      for (final email in ['cliente@gmail.com', 'cliente@empresa.com.br']) {
+        await tester.enterText(find.byType(TextFormField).at(1), email);
+        await submit(tester, 'Criar cadastro');
+        expect(find.text(error), findsNothing);
+        expect(find.text('Informe um e-mail válido'), findsNothing);
+      }
+    },
+  );
+
   testWidgets('QA-81 cadastro rejeita CPF invalido', (tester) async {
     await open(tester, (_) {});
     await tester.tap(find.text('Cadastrar'));
@@ -173,31 +200,30 @@ void main() {
     expect(find.text('Informe um CNPJ válido'), findsOneWidget);
   });
 
-  testWidgets(
-    'nome e razao social permitem apenas letras e espacos',
-    (tester) async {
-      await open(tester, (_) {});
-      await tester.tap(find.text('Cadastrar'));
-      await tester.pump();
-      await tester.tap(find.text('Pessoa jurídica'));
-      await tester.pump();
-      final field = find.byType(TextFormField).first;
-      final controller = tester.widget<TextFormField>(field).controller!;
-      await tester.enterText(field, '30K Automotiva São José & Cia. 123');
-      expect(controller.text, 'K Automotiva São José  Cia ');
-      await tester.enterText(field, '1234567890');
-      expect(controller.text, isEmpty);
-      await submit(tester, 'Criar cadastro');
-      expect(find.text('Informe a razão social'), findsOneWidget);
-      await tester.enterText(field, 'Empresa １２３ ²');
-      expect(controller.text, 'Empresa  ');
+  testWidgets('nome e razao social permitem apenas letras e espacos', (
+    tester,
+  ) async {
+    await open(tester, (_) {});
+    await tester.tap(find.text('Cadastrar'));
+    await tester.pump();
+    await tester.tap(find.text('Pessoa jurídica'));
+    await tester.pump();
+    final field = find.byType(TextFormField).first;
+    final controller = tester.widget<TextFormField>(field).controller!;
+    await tester.enterText(field, '30K Automotiva São José & Cia. 123');
+    expect(controller.text, 'K Automotiva São José  Cia ');
+    await tester.enterText(field, '1234567890');
+    expect(controller.text, isEmpty);
+    await submit(tester, 'Criar cadastro');
+    expect(find.text('Informe a razão social'), findsOneWidget);
+    await tester.enterText(field, 'Empresa １２３ ²');
+    expect(controller.text, 'Empresa  ');
 
-      await tester.tap(find.text('Pessoa física'));
-      await tester.pump();
-      await tester.enterText(field, 'João da Silva 123 &');
-      expect(controller.text, 'João da Silva ');
-    },
-  );
+    await tester.tap(find.text('Pessoa física'));
+    await tester.pump();
+    await tester.enterText(field, 'João da Silva 123 &');
+    expect(controller.text, 'João da Silva  ');
+  });
 
   testWidgets(
     'cadastro rejeita razao social com simbolos sem passar pelo teclado',

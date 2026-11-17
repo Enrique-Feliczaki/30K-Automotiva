@@ -156,6 +156,9 @@ void main() {
       cart.changeQuantity(0, -1);
       await tester.pump();
       expect(cart.unitCount, 2);
+      // Wait for the confirmation snackbar to stop covering the button.
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
       await tester.tap(
         find.widgetWithText(FilledButton, 'Adicionar ao carrinho'),
       );
@@ -163,6 +166,8 @@ void main() {
       expect(cart.unitCount, 3);
       expect(find.byType(ProductDetailsScreen), findsOneWidget);
       expect(find.byType(CartScreen), findsNothing);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.arrow_back).first);
       await tester.pumpAndSettle();
       expect(find.text('Abrir produto'), findsOneWidget);

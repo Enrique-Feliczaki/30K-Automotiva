@@ -23,9 +23,9 @@ IconData _icon(int codePoint) =>
 Map<String, dynamic> productRecord(StoreProduct product) => {
   'id': product.id,
   'name': product.name,
+  'description': product.description,
   'category': product.category,
   'sku': product.sku,
-  'description': product.description,
   'price': product.price,
   'stock': product.stock,
   'minimumStock': product.minimumStock,
@@ -39,9 +39,9 @@ Map<String, dynamic> productRecord(StoreProduct product) => {
 StoreProduct productFromRecord(Map<String, dynamic> data) => StoreProduct(
   id: data['id'] as String,
   name: data['name'] as String,
+  description: data['description'] as String? ?? '',
   category: data['category'] as String,
   sku: data['sku'] as String,
-  description: data['description'] as String? ?? '',
   price: (data['price'] as num).toDouble(),
   stock: data['stock'] as int,
   minimumStock: data['minimumStock'] as int,

@@ -112,6 +112,20 @@ void main() {
     expect(find.byType(TextFormField), findsNWidgets(10));
   });
 
+  testWidgets('validade insere barra ao digitar somente quatro numeros', (tester) async {
+    await open(tester);
+    await tester.tap(find.text('Cartão de crédito'));
+    await tester.pump();
+    final field = find.widgetWithText(TextFormField, 'Validade');
+    await tester.enterText(field, '1230');
+    final editable = tester.widget<EditableText>(
+      find.descendant(of: field, matching: find.byType(EditableText)),
+    );
+    expect(editable.controller.text, '12/30');
+    expect(editable.keyboardType, TextInputType.number);
+    expect(tester.widget<TextFormField>(field).validator!('12/30'), isNull);
+  });
+
   testWidgets('QA-103 volta do cartao para pix', (tester) async {
     await open(tester);
     await tester.tap(find.text('Cartão de crédito'));

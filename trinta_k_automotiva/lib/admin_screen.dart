@@ -568,20 +568,17 @@ class _ProductEditorState extends State<_ProductEditor> {
             ),
             _field(_name, 'Nome do produto', required: true),
             const SizedBox(height: 10),
-            _field(
-              _description,
-              'Descrição',
-              required: true,
-              maxLines: 4,
-              maxLength: 500,
-            ),
-            const SizedBox(height: 10),
             ResponsiveRow(
               children: [
                 Expanded(child: _categoryDropdown()),
                 const SizedBox(width: 9),
                 Expanded(
-                  child: _field(_sku, 'Código / SKU', required: true, sku: true),
+                  child: _field(
+                    _sku,
+                    'Código / SKU',
+                    required: true,
+                    sku: true,
+                  ),
                 ),
               ],
             ),
@@ -632,6 +629,26 @@ class _ProductEditorState extends State<_ProductEditor> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _description,
+              style: const TextStyle(fontSize: 12),
+              minLines: 3,
+              maxLines: 6,
+              maxLength: 500,
+              inputFormatters: [LengthLimitingTextInputFormatter(500)],
+              keyboardType: TextInputType.multiline,
+              decoration: InputDecoration(
+                labelText: 'Descrição',
+                labelStyle: const TextStyle(color: _muted, fontSize: 11),
+                hintStyle: const TextStyle(color: _muted, fontSize: 12),
+                hintText: 'Detalhes e informações sobre o produto',
+                alignLabelWithHint: true,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
             ),
             const SizedBox(height: 17),
             ResponsiveRow(

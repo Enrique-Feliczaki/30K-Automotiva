@@ -181,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
   int _category = 0;
   final _searchController = TextEditingController();
+  final _catalogScrollController = ScrollController();
   final _productsSectionKey = GlobalKey();
   final _homeCategories = ProductStore.homeCategories;
   List<String> get _categories => ['Todos', ..._homeCategories];
@@ -198,7 +199,36 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _catalogScrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _exploreProducts() async {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _category = 0;
+      _searchController.clear();
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || !_catalogScrollController.hasClients) return;
+    // On small screens the catalog sliver may not have been built yet.
+    while (_productsSectionKey.currentContext == null) {
+      final position = _catalogScrollController.position;
+      if (position.pixels >= position.maxScrollExtent) return;
+      _catalogScrollController.jumpTo(
+        (position.pixels + position.viewportDimension).clamp(
+          0.0,
+          position.maxScrollExtent,
+        ),
+      );
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || !_catalogScrollController.hasClients) return;
+    }
+    await Scrollable.ensureVisible(
+      _productsSectionKey.currentContext!,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -229,6 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: _tab == 2
             ? _accountPage()
             : CustomScrollView(
+                controller: _catalogScrollController,
                 slivers: [
                   SliverToBoxAdapter(child: _header()),
                   SliverToBoxAdapter(child: _search()),
@@ -236,10 +267,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     SliverToBoxAdapter(child: _hero()),
                   SliverToBoxAdapter(child: _categoriesSection()),
                   SliverToBoxAdapter(
-                    child: KeyedSubtree(
-                      key: _productsSectionKey,
-                      child: _offersSection(),
-                    ),
+                    key: _productsSectionKey,
+                    child: _offersSection(),
                   ),
                   const SliverToBoxAdapter(child: SizedBox(height: 28)),
                 ],
@@ -394,12 +423,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _editAddress() async {
     final profile = CustomerProfile.instance;
     final formKey = GlobalKey<FormState>();
-    final postalCode = TextEditingController(text: profile.postalCode);
-    final state = TextEditingController(text: profile.state);
-    final city = TextEditingController(text: profile.city);
-    final neighborhood = TextEditingController(text: profile.neighborhood);
-    final street = TextEditingController(text: profile.street);
-    final houseNumber = TextEditingController(text: profile.houseNumber);
+    final address = <String, String>{
+      'postalCode': profile.postalCode,
+      'state': profile.state,
+      'city': profile.city,
+      'neighborhood': profile.neighborhood,
+      'street': profile.street,
+      'houseNumber': profile.houseNumber,
+    };
     InputDecoration decoration(String label, String hint) => InputDecoration(
       labelText: label,
       errorMaxLines: 3,
@@ -426,14 +457,15 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     Widget field(
-      TextEditingController controller,
+      String addressKey,
       String label,
       String hint, {
       TextInputType? keyboardType,
       List<TextInputFormatter>? inputFormatters,
       String? Function(String?)? validator,
     }) => TextFormField(
-      controller: controller,
+      initialValue: address[addressKey],
+      onSaved: (value) => address[addressKey] = value?.trim() ?? '',
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       validator: validator ?? validateAddressText,
@@ -460,23 +492,43 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   field(
-                    postalCode,
+                    'postalCode',
                     'CEP',
                     '00000-000',
                     keyboardType: TextInputType.number,
-                    validator: validatePostalCode,
+                    validator: AddressValidation.postalCode,
                   ),
                   const SizedBox(height: 10),
-                  field(state, 'Estado', 'SP', validator: validateState),
-                  const SizedBox(height: 10),
-                  field(city, 'Cidade', 'Sua cidade'),
-                  const SizedBox(height: 10),
-                  field(neighborhood, 'Bairro', 'Seu bairro'),
-                  const SizedBox(height: 10),
-                  field(street, 'Rua', 'Nome da rua'),
+                  field(
+                    'state',
+                    'Estado',
+                    'SP',
+                    validator: AddressValidation.state,
+                  ),
                   const SizedBox(height: 10),
                   field(
-                    houseNumber,
+                    'city',
+                    'Cidade',
+                    'Sua cidade',
+                    validator: AddressValidation.city,
+                  ),
+                  const SizedBox(height: 10),
+                  field(
+                    'neighborhood',
+                    'Bairro',
+                    'Seu bairro',
+                    validator: AddressValidation.neighborhood,
+                  ),
+                  const SizedBox(height: 10),
+                  field(
+                    'street',
+                    'Rua',
+                    'Nome da rua',
+                    validator: AddressValidation.street,
+                  ),
+                  const SizedBox(height: 10),
+                  field(
+                    'houseNumber',
                     'Número',
                     'Nº',
                     keyboardType: TextInputType.number,
@@ -500,8 +552,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           FilledButton(
             onPressed: () {
-              if (formKey.currentState!.validate())
+              if (formKey.currentState!.validate()) {
+                formKey.currentState!.save();
                 Navigator.pop(dialogContext, true);
+              }
             },
             child: const Text('Salvar endereço'),
           ),
@@ -516,12 +570,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (saved == true && mounted) {
       profile
-        ..postalCode = postalCode.text.trim()
-        ..state = state.text.trim()
-        ..city = city.text.trim()
-        ..neighborhood = neighborhood.text.trim()
-        ..street = street.text.trim()
-        ..houseNumber = houseNumber.text.trim();
+        ..postalCode = address['postalCode']!
+        ..state = address['state']!.toUpperCase()
+        ..city = address['city']!
+        ..neighborhood = address['neighborhood']!
+        ..street = address['street']!
+        ..houseNumber = address['houseNumber']!;
       profile.save();
       try {
         await LocalPersistence.active?.flush();
@@ -530,12 +584,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       if (mounted) setState(() {});
     }
-    postalCode.dispose();
-    state.dispose();
-    city.dispose();
-    neighborhood.dispose();
-    street.dispose();
-    houseNumber.dispose();
   }
 
   Widget _header() => Padding(
@@ -678,32 +726,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Stack(
         children: [
           Positioned(
-            right: -50,
-            top: -38,
-            child: Container(
-              width: 230,
-              height: 230,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _red.withValues(alpha: .10),
-              ),
-            ),
-          ),
-          Positioned(
             right: -4,
             bottom: 13,
             child: Icon(
-              Icons.directions_car_filled,
+              Icons.directions_car_outlined,
               size: 190,
-              color: Colors.white.withValues(alpha: .10),
-            ),
-          ),
-          Positioned(
-            right: 22,
-            bottom: 51,
-            child: Icon(
-              Icons.directions_car_filled,
-              size: 145,
               color: const Color(0xFF777B80).withValues(alpha: .28),
             ),
           ),
@@ -790,20 +817,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ),
   );
 
-  void _exploreProducts() {
-    setState(() => _category = 0);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final productsContext = _productsSectionKey.currentContext;
-      if (productsContext == null) return;
-      Scrollable.ensureVisible(
-        productsContext,
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeInOut,
-        alignment: 0,
-      );
-    });
-  }
-
   Widget _categoriesSection() => Padding(
     padding: const EdgeInsets.only(top: 25),
     child: Column(
@@ -878,15 +891,41 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _sectionTitle(String title) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 18),
-    child: Text(
-      title,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 1.15,
-      ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.15,
+            ),
+          ),
+        ),
+        if (widget.isAdmin)
+          GestureDetector(
+            onTap: _openAdmin,
+            child: const Row(
+              children: [
+                Text(
+                  'Gerenciar',
+                  style: TextStyle(fontSize: 10, color: _silver),
+                ),
+                SizedBox(width: 3),
+                Icon(Icons.chevron_right, size: 15, color: _silver),
+              ],
+            ),
+          ),
+      ],
     ),
   );
+
+  void _openAdmin() {
+    if (!widget.isAdmin) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const AdminScreen()));
+  }
 
   Widget _offersSection() => ListenableBuilder(
     listenable: ProductStore.instance,
@@ -894,9 +933,14 @@ class _HomeScreenState extends State<HomeScreen> {
       final allProducts = ProductStore.instance.products;
       final selectedCategory = _category == 0 ? null : _categories[_category];
       final query = _normalizeSearch(_searchController.text);
-      final products = allProducts.where((product) =>
-          (selectedCategory == null || product.category == selectedCategory) &&
-          _normalizeSearch(product.name).contains(query)).toList();
+      final products = allProducts
+          .where(
+            (product) =>
+                (selectedCategory == null ||
+                    product.category == selectedCategory) &&
+                _normalizeSearch(product.name).contains(query),
+          )
+          .toList();
       return Padding(
         padding: const EdgeInsets.only(top: 27),
         child: Column(
@@ -916,7 +960,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 13),
             if (products.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 20,
+                ),
                 child: Text(
                   query.isEmpty
                       ? 'Nenhum produto nesta categoria.'
@@ -1231,7 +1278,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    height: MediaQuery.textScalerOf(context).scale(14) * 1.2 * 2,
+                    height:
+                        MediaQuery.textScalerOf(context).scale(14) * 1.2 * 2,
                     child: Text(
                       product.name,
                       maxLines: 2,
@@ -1379,7 +1427,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
   }
-
 }
 
 class ProductDetailsScreen extends StatefulWidget {

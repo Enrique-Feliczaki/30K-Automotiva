@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/foundation.dart';
 
+import 'email_validation.dart';
+
 class LocalAccount {
   const LocalAccount({
     required this.email,
@@ -38,6 +40,9 @@ class LocalAccounts extends ChangeNotifier {
   final List<LocalAccount> _accounts = [];
   List<LocalAccount> get accounts => List.unmodifiable(_accounts);
 
+  static String? registrationEmailError(String? value) =>
+      validateRegistrationEmail(value);
+
   String? duplicateMessage(String email, String document) {
     if (_accounts.any((a) => a.email == email.trim().toLowerCase())) {
       return 'Já existe um usuário cadastrado com esse e-mail.';
@@ -62,6 +67,8 @@ class LocalAccounts extends ChangeNotifier {
     required String password,
   }) async {
     final email = (profile['email'] as String).trim().toLowerCase();
+    final emailError = registrationEmailError(email);
+    if (emailError != null) throw ArgumentError(emailError);
     final document = (profile['document'] as String).replaceAll(
       RegExp(r'\D'),
       '',
