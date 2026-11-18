@@ -8,6 +8,10 @@ void main() {
       'cliente@gmail.com123',
       'cliente@gmail.com.',
       'cliente@gmail.123',
+      'cliente@e.com',
+      'cliente@gmail.come',
+      'cliente@gmail.comx',
+      'cliente@empresa.com.brr',
     ]) {
       await expectLater(
         accounts.register(
@@ -20,13 +24,12 @@ void main() {
     }
   });
 
-  test('aceita TLDs e subdominios sintaticamente validos', () {
+  test('aceita sufixos configurados e subdominios validos', () {
     for (final email in [
       'cliente@example.com',
       ' CLIENTE@EMPRESA.COM.BR ',
       'cliente@example.org',
       'cliente@example.co.uk',
-      'cliente@e.com',
       'cliente@example.co',
     ]) {
       expect(LocalAccounts.registrationEmailError(email), isNull);

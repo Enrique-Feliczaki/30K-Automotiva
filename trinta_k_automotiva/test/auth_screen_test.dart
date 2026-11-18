@@ -123,14 +123,21 @@ void main() {
     expect(find.text('Informe um e-mail válido'), findsOneWidget);
   });
 
-  testWidgets('cadastro valida formato sem restringir o dominio', (
+  testWidgets('cadastro rejeita formato ou sufixo nao reconhecido', (
     tester,
   ) async {
     await open(tester, (_) {});
     await tester.tap(find.text('Cadastrar'));
     await tester.pump();
     const error = 'Informe um e-mail válido';
-    for (final email in ['cliente@gmail', 'cliente@gmail.123']) {
+    for (final email in [
+      'cliente@gmail',
+      'cliente@gmail.123',
+      'cliente@e.com',
+      'cliente@gmail.come',
+      'cliente@gmail.comx',
+      'cliente@empresa.com.brr',
+    ]) {
       await tester.enterText(find.byType(TextFormField).at(1), email);
       await submit(tester, 'Criar cadastro');
       expect(find.text(error), findsOneWidget);
@@ -138,8 +145,8 @@ void main() {
     for (final email in [
       'cliente@gmail.com',
       'cliente@empresa.com.br',
-      'cliente@e.com',
       'cliente@empresa.co',
+      'cliente@empresa.dev',
     ]) {
       await tester.enterText(find.byType(TextFormField).at(1), email);
       await submit(tester, 'Criar cadastro');

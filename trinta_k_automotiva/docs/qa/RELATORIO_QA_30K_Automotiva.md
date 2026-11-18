@@ -61,9 +61,10 @@ A validação de e-mail aceitava apenas uma lista fechada de terminações. Isso
 
 - uma parte local bem formada;
 - rótulos de domínio sem hífens inválidos;
-- TLD alfabético entre 2 e 63 caracteres.
+- pelo menos dois caracteres em cada rótulo anterior ao TLD;
+- terminação completa presente na lista de sufixos aceitos pelo cadastro.
 
-O endereço `cliente@e.com` e domínios como `.co` passam pela validação de formato. A aplicação não afirma que o endereço existe; essa comprovação exigiria confirmação por e-mail.
+O endereço `cliente@e.com` e terminações inexistentes como `.come` são rejeitados, enquanto domínios completos com sufixos como `.com`, `.com.br`, `.co`, `.org` e `.dev` continuam válidos. A aplicação não afirma que o endereço existe; essa comprovação exigiria confirmação por e-mail.
 
 ## Comandos de execução
 
